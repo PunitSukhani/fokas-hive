@@ -13,15 +13,30 @@ export const authenticateSocket = async (socket, next) => {
     }
     
     // Fallback to auth object if no cookie
-    if (!token && socket.handshake.auth.token) {
+    if (!token && socket.handshake.auth && socket.handshake.auth.token) {
       token = socket.handshake.auth.token;
     }
     
-    if (!token) {
-      return next(new Error('Authentication required'));
+    // Check for token in query params (useful for Postman testing)
+    if (!token && socket.handshake.query && socket.handshake.query.token) {
+      token = String(socket.handshake.query.token).trim();
     }
-
+    
+    // Check if token exists
+    if (!token) {
+      return next(new Error('Authentication token is required'));
+    }
+    
+    // Remove Bearer prefix if present
+    if (token.startsWith('Bearer ')) {
+      token = token.substring(7);
+    }
+    
+    // Make sure token is a string
+    token = String(token).trim();
+    
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {
@@ -36,7 +51,6 @@ export const authenticateSocket = async (socket, next) => {
     };
     next();
   } catch (error) {
-    console.error('Socket authentication error:', error);
-    return next(new Error('Authentication error'));
+    return next(new Error(`Authentication error: ${error.message}`));
   }
 };
