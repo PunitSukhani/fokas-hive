@@ -1,14 +1,23 @@
 import jwt from 'jsonwebtoken';
 
 export const auth = (req, res, next) => {
-  const header = req.headers.authorization;
-  if (!header) return res.status(401).json({ message: 'No token' });
-  const token = header.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Check for token in cookies first (preferred)
+    const token = req.cookies.token;
+    
+    // Fallback to Authorization header for API clients that don't support cookies
+    const headerToken = req.headers.authorization?.split(' ')[1];
+    
+    if (!token && !headerToken) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    // Verify token (use cookie token first, then header token as fallback)
+    const decoded = jwt.verify(token || headerToken, process.env.JWT_SECRET);
     req.user = decoded;
     next();
-  } catch {
-    res.status(401).json({ message: 'Invalid token' });
+  } catch (err) {
+    console.error('Auth middleware error:', err);
+    res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
