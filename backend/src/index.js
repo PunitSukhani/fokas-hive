@@ -5,7 +5,8 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
-// ...other imports
+import roomRoutes from './routes/roomRoutes.js';
+import setupSocketHandlers from './socket/socketHandlers.js';
 
 dotenv.config();
 
@@ -24,13 +25,15 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
-// ...other routes
+app.use('/api/rooms', roomRoutes);
 
-// Socket.IO setup placeholder
-io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
-  // ...room logic will go here
+// Welcome route
+app.get('/', (req, res) => {
+  res.send('StudyRoom API is running');
 });
+
+// Setup Socket.IO handlers
+setupSocketHandlers(io);
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {
