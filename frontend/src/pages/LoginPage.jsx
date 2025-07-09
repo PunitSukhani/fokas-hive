@@ -4,6 +4,7 @@ import { login } from '../services/authService';
 import { HiExclamationCircle, HiMail, HiLockClosed, HiArrowLeft } from 'react-icons/hi';
 import { ImSpinner8 } from 'react-icons/im';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -37,13 +38,21 @@ const LoginPage = () => {
       if (result.success) {
         // Update auth context with user data
         authLogin(result.user);
+        // Show success toast
+        toast.success('Login successful!');
         // Redirect to dashboard
         navigate('/dashboard');
       } else {
-        setError(result.error || 'Login failed. Please try again.');
+        // Display specific error message from backend or a default message
+        const errorMsg = result.error || 'Invalid email or password. Please try again.';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err) {
-      setError('Login failed. Please try again.');
+      // For unexpected errors (network issues, etc.)
+      const errorMsg = 'Unable to connect to the server. Please check your internet connection and try again.';
+      setError(errorMsg);
+      toast.error(errorMsg);
       console.error('Login error:', err);
     } finally {
       setIsLoading(false);

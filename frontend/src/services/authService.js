@@ -18,7 +18,17 @@ export const login = async (email, password) => {
     return result;
   } catch (error) {
     console.error('Login error:', error);
-    return { success: false, error: error.message || 'Login failed. Please check your connection.' };
+    
+    // Return user-friendly error message
+    // If the error has been processed by axiosInstance interceptor
+    if (error.success === false) {
+      return error;
+    }
+    
+    return { 
+      success: false, 
+      error: 'Invalid login credentials. Please check your email and password.' 
+    };
   }
 };
 

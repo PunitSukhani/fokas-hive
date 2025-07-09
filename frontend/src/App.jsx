@@ -12,16 +12,32 @@ import NotFound from './pages/NotFound'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/common/ProtectedRoute'
 
+// Import toast notifications
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+
 // Development tools - will be removed in production
 import AuthServiceTest from './components/dev/AuthServiceTest'
-import DevModeIndicator from './components/dev/DevModeIndicator'
+// DevModeIndicator removed
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <div className="min-h-screen bg-background text-gray-900">
-          {process.env.NODE_ENV !== 'production' && <DevModeIndicator />}
+          {/* Toast container for notifications */}
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+          />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />

@@ -20,23 +20,46 @@ axiosInstance.interceptors.response.use(
   (error) => {
     // Handle common errors globally
     if (error.response) {
+      // Get meaningful error message from response
+      const errorMessage = error.response.data?.message || 
+        error.response.statusText || 
+        'An error occurred';
+      
       if (error.response.status === 401) {
-        // Unauthorized, redirect to login page
-        // Only redirect if not already on login page or register page
+        // Unauthorized - for login page show message, for other pages redirect
         const currentPath = window.location.pathname;
         if (!['/login', '/register', '/'].includes(currentPath)) {
           window.location.href = "/login";
         }
+        
+        // Return standardized error format instead of rejecting
+        return {
+          success: false,
+          error: errorMessage === 'Invalid credentials' ? 
+            'Incorrect email or password' : 
+            errorMessage
+        };
       } else if (error.response.status === 500) {
         console.error("Server error. Please try again later.");
+        return {
+          success: false,
+          error: 'Server error. Please try again later.'
+        };
       }
       
-      return Promise.reject(error);
+      // For other status codes, return standardized error
+      return {
+        success: false,
+        error: errorMessage
+      };
     }
     
     // Network error or other issues
     console.error("Network or request error:", error.message);
-    return Promise.reject(error);
+    return {
+      success: false,
+      error: error.message || 'Network connection error'
+    };
   }
 );
 
