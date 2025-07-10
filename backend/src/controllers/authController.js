@@ -1,14 +1,10 @@
 import User from '../models/User.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import config from '../config.js';
 
-// Cookie options for JWT token
-const cookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-};
+// Cookie options for JWT token from config
+const cookieOptions = config.SESSION.COOKIE_OPTIONS;
 
 export const signup = async (req, res) => {
   try {
@@ -18,7 +14,7 @@ export const signup = async (req, res) => {
     if (existing) return res.status(409).json({ message: 'Email already in use' });
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hashed });
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: config.SESSION.JWT_EXPIRY });
     
     // Set JWT as HTTP-only cookie
     res.cookie('token', token, cookieOptions);
@@ -33,15 +29,40 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+    
+    console.log('Login attempt for email:', email);
+    
+    // Check if JWT_SECRET is available
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not defined in environment variables');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+    
     const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user) {
+      console.log('User not found for email:', email);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    console.log('User found, checking password...');
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: 'Invalid credentials' });
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    if (!match) {
+      console.log('Password mismatch for email:', email);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    console.log('Password verified, generating token...');
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: config.SESSION.JWT_EXPIRY });
     
     // Set JWT as HTTP-only cookie
     res.cookie('token', token, cookieOptions);
     
+    console.log('Login successful for user:', user.email);
     res.json({ user: { id: user._id, name: user.name, email: user.email } });
   } catch (err) {
     console.error('Login error:', err);

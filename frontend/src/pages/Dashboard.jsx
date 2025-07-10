@@ -1,20 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import useSocket from '../hooks/useSocket';
+import { useActiveRooms, useUserPresence } from '../hooks/useAbly';
 import useRoomOperations from '../hooks/useRoomOperations';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import SearchAndCreateBar from '../components/dashboard/SearchAndCreateBar';
 import RoomList from '../components/dashboard/RoomList';
 import CreateRoomModal from '../components/dashboard/CreateRoomModal';
+import SessionInfo from '../components/debug/SessionInfo';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // Server URL configuration - could be moved to .env file
 const SOCKET_SERVER_URL = 'http://localhost:5000';
 
 const Dashboard = () => {
-  // Custom socket hook
-  const { socket, isConnected, connectionError, reconnect } = useSocket(SOCKET_SERVER_URL);
+  // Socket hook for compatibility with existing room operations
+  const { socket, isConnected: socketConnected, connectionError, reconnect } = useSocket(SOCKET_SERVER_URL);
   
-  // Room operations hook
+  // Ably hooks for real-time active rooms
+  const { 
+    activeRooms, 
+    loading: ablyLoading, 
+    error: ablyError, 
+    isConnected: ablyConnected,
+    refetch: refetchRooms
+  } = useActiveRooms();
+  
+  // User presence for additional context
+  const { userPresence } = useUserPresence();
+  
+  // Room operations hook (updated to work with both Socket.IO and REST API)
   const {
     searchTerm,
     filteredRooms,
@@ -26,87 +41,62 @@ const Dashboard = () => {
     handleCreateRoom,
     handleJoinRoom,
     updateActiveRooms
-  } = useRoomOperations(socket, isConnected);
+  } = useRoomOperations(socket, socketConnected, activeRooms);
 
   // Loading and error states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Setup socket event listeners
+  // Update loading and error states based on Ably
+  useEffect(() => {
+    setLoading(ablyLoading);
+    setError(ablyError);
+  }, [ablyLoading, ablyError]);
+
+  // Update filtered rooms when active rooms change
+  useEffect(() => {
+    updateActiveRooms(activeRooms);
+  }, [activeRooms, updateActiveRooms]);
+
+  // Setup socket event listeners for room creation (fallback)
   useEffect(() => {
     if (!socket) return;
 
     let isMounted = true;
-    let loadingTimeout;
-
-    const handleActiveRooms = (rooms) => {
-      if (isMounted) {
-        console.log('Received active rooms:', rooms);
-        updateActiveRooms(rooms);
-        setLoading(false);
-        setError(null);
-      }
-    };
 
     const handleRoomCreated = (roomData) => {
       if (isMounted) {
         toast.success(`Room "${roomData.name || 'New Room'}" created successfully!`);
-        // Don't navigate here - let the backend handle the redirect
+        // Refetch rooms to get updated list
+        refetchRooms();
       }
     };
 
-    // Request active rooms when connected
-    if (isConnected) {
-      console.log('Socket connected, requesting active rooms...');
-      socket.emit('get-active-rooms');
-      
-      // Set a timeout to handle the case where server doesn't respond
-      loadingTimeout = setTimeout(() => {
-        if (isMounted) {
-          console.log('Timeout reached, assuming no rooms available');
-          setLoading(false);
-          updateActiveRooms([]); // Set empty array instead of error
-          setError(null); // Clear any potential error
-        }
-      }, 3000); // Reduced timeout to 3 seconds
-    }
-
     // Setup socket event listeners
-    socket.on('active-rooms', handleActiveRooms);
     socket.on('room-created', handleRoomCreated);
 
     // Cleanup function
     return () => {
       isMounted = false;
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout);
-      }
-      socket.off('active-rooms', handleActiveRooms);
       socket.off('room-created', handleRoomCreated);
     };
-  }, [socket, isConnected, updateActiveRooms]);
+  }, [socket, refetchRooms]);
 
   // Handle connection errors and initial loading state
   useEffect(() => {
-    if (connectionError) {
-      console.error('Connection error:', connectionError);
+    if (connectionError && !ablyConnected) {
+      console.error('Both Socket.IO and Ably connection failed:', connectionError);
       setError('Failed to connect to server. Please try again later.');
       setLoading(false);
-    } else if (isConnected && loading) {
-      // If we're connected but still loading, wait a bit then stop loading
-      // This handles the case where the server is connected but no rooms response
-      const initialLoadTimeout = setTimeout(() => {
-        console.log('Connected but no rooms response, stopping loading...');
-        setLoading(false);
-        updateActiveRooms([]);
-      }, 1000);
-      
-      return () => clearTimeout(initialLoadTimeout);
+    } else if (ablyConnected || socketConnected) {
+      // If either connection is working, clear errors
+      setError(null);
     }
-  }, [isConnected, connectionError, loading, updateActiveRooms]);
+  }, [connectionError, ablyConnected, socketConnected]);
 
   // Function to retry connection
   const retryConnection = () => {
+    console.log('Retrying connections...');
     setLoading(true);
     setError(null);
     
@@ -115,42 +105,67 @@ const Dashboard = () => {
       autoClose: 2000
     });
     
-    reconnect();
+    reconnect(); // Retry Socket.IO
+    refetchRooms(); // Retry Ably/REST
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-white">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <DashboardHeader />
-        
-        <SearchAndCreateBar 
-          searchTerm={searchTerm}
-          onSearchChange={handleSearchChange}
-          onCreateRoom={() => setShowCreateModal(true)}
-          isConnected={isConnected}
-        />
-        
-        <div className="mt-8">
-          <RoomList 
-            loading={loading}
-            error={error}
-            rooms={filteredRooms}
-            onJoinRoom={handleJoinRoom}
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-white">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <DashboardHeader />
+          
+          {/* Connection Status Indicator */}
+          <div className="mb-4 flex gap-2 text-sm">
+            <div className={`px-2 py-1 rounded text-xs ${
+              ablyConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}>
+              Ably: {ablyConnected ? 'Connected' : 'Disconnected'}
+            </div>
+            <div className={`px-2 py-1 rounded text-xs ${
+              socketConnected ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+            }`}>
+              Socket.IO: {socketConnected ? 'Connected' : 'Fallback'}
+            </div>
+          </div>
+
+          <SearchAndCreateBar 
+            searchTerm={searchTerm}
+            onSearchChange={handleSearchChange}
             onCreateRoom={() => setShowCreateModal(true)}
-            onRetryConnection={retryConnection}
+            isConnected={ablyConnected || socketConnected}
           />
+          
+          <div className="mt-8">
+            <RoomList 
+              loading={loading}
+              error={error}
+              rooms={filteredRooms}
+              onJoinRoom={handleJoinRoom}
+              onCreateRoom={() => setShowCreateModal(true)}
+              onRetryConnection={retryConnection}
+              userPresence={userPresence}
+            />
+          </div>
+          
+          {/* Session Debug Info - Remove in production */}
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="mt-8">
+              <SessionInfo />
+            </div>
+          )}
         </div>
+        
+        <CreateRoomModal 
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateRoom}
+          roomName={newRoomName}
+          onRoomNameChange={(e) => setNewRoomName(e.target.value)}
+          isConnected={ablyConnected || socketConnected}
+        />
       </div>
-      
-      <CreateRoomModal 
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSubmit={handleCreateRoom}
-        roomName={newRoomName}
-        onRoomNameChange={(e) => setNewRoomName(e.target.value)}
-        isConnected={isConnected}
-      />
-    </div>
+    </ErrorBoundary>
   );
 };
 

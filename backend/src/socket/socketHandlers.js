@@ -1,6 +1,6 @@
 // Socket.IO event handlers for study room features
 import { authenticateSocket } from './handlers/authHandler.js';
-import { handleJoinRoom, handleLeaveRoom } from './handlers/roomHandler.js';
+import { handleJoinRoom, handleLeaveRoom, handleGetActiveRooms } from './handlers/roomHandler.js';
 import { handleSendMessage } from './handlers/chatHandler.js';
 import { 
   handleStartTimer,
@@ -28,6 +28,7 @@ export default function setupSocketHandlers(io) {
     // Room events
     socket.on('join-room', (data) => handleJoinRoom(io, socket, data));
     socket.on('leave-room', (data) => handleLeaveRoom(io, socket, data));
+    socket.on('get-active-rooms', () => handleGetActiveRooms(io, socket));
 
     // Chat events
     socket.on('send-message', (data) => handleSendMessage(io, socket, data));

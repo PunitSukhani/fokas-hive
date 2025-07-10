@@ -14,8 +14,8 @@ const axiosInstance = axios.create({
 // Response Interceptor
 axiosInstance.interceptors.response.use(
   (response) => {
-    // Standardize successful responses
-    return { success: true, ...response.data };
+    // Return the data directly for successful responses
+    return response.data;
   },
   (error) => {
     // Handle common errors globally
@@ -31,35 +31,25 @@ axiosInstance.interceptors.response.use(
         if (!['/login', '/register', '/'].includes(currentPath)) {
           window.location.href = "/login";
         }
-        
-        // Return standardized error format instead of rejecting
-        return {
-          success: false,
-          error: errorMessage === 'Invalid credentials' ? 
-            'Incorrect email or password' : 
-            errorMessage
-        };
       } else if (error.response.status === 500) {
         console.error("Server error. Please try again later.");
-        return {
-          success: false,
-          error: 'Server error. Please try again later.'
-        };
       }
       
-      // For other status codes, return standardized error
-      return {
-        success: false,
-        error: errorMessage
-      };
+      // Reject with standardized error
+      return Promise.reject({
+        message: errorMessage,
+        status: error.response.status,
+        response: error.response
+      });
     }
     
     // Network error or other issues
     console.error("Network or request error:", error.message);
-    return {
-      success: false,
-      error: error.message || 'Network connection error'
-    };
+    return Promise.reject({
+      message: error.message || 'Network connection error',
+      status: null,
+      response: null
+    });
   }
 );
 

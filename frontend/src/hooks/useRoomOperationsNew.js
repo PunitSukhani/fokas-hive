@@ -40,6 +40,7 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
     setSearchTerm(e.target.value);
     debouncedSearch(e.target.value);
   };
+
   // Handle create room - prefer REST API over Socket.IO
   const handleCreateRoom = async (e) => {
     e.preventDefault();
@@ -49,10 +50,8 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
       return;
     }
     
-    // Generate a unique room name by appending timestamp if needed
-    let roomName = newRoomName.trim();
     const roomData = {
-      name: roomName
+      name: newRoomName.trim()
     };
     
     try {
@@ -61,13 +60,8 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
         toastId: 'creating-room',
         autoClose: 2000
       });
-      
+
       const createdRoom = await createRoomAPI(roomData);
-      
-      // Check if creation was successful
-      if (!createdRoom || !createdRoom._id) {
-        throw new Error('Invalid response from server');
-      }
       
       toast.success(`Room "${createdRoom.name}" created successfully!`, {
         toastId: 'room-created'
@@ -81,33 +75,6 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
       
     } catch (error) {
       console.error('Room creation error:', error);
-      
-      // Handle specific error cases
-      if (error.response?.status === 409) {
-        // Room name already exists - try with a timestamp
-        const timestamp = Date.now().toString().slice(-4);
-        const uniqueRoomName = `${roomName} (${timestamp})`;
-        
-        try {
-          const retryRoomData = { name: uniqueRoomName };
-          const createdRoom = await createRoomAPI(retryRoomData);
-          
-          toast.success(`Room "${createdRoom.name}" created successfully!`, {
-            toastId: 'room-created'
-          });
-          
-          setShowCreateModal(false);
-          setNewRoomName('');
-          navigate(`/room/${createdRoom._id}`);
-          return;
-        } catch (retryError) {
-          // If retry also fails, show original error
-          toast.error(`Room name "${roomName}" is already taken. Please choose a different name.`, { 
-            toastId: 'room-exists' 
-          });
-          return; 
-        }
-      }
       
       // Fallback to Socket.IO if REST API fails
       if (socket && isSocketConnected) {

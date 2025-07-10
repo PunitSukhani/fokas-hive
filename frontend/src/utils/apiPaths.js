@@ -18,6 +18,7 @@ const API_PATHS = {
   ROOMS: {
     CREATE: "/rooms", 
     GET_ALL: "/rooms", 
+    GET_ACTIVE: "/rooms/active",
     GET_ONE: (id) => `/rooms/${id}`,
     JOIN: (id) => `/rooms/${id}/join`,
   },

@@ -1,4 +1,24 @@
 import Room from '../../models/Room.js';
+import { publishActiveRooms, publishUserPresence } from '../../services/ablyService.js';
+
+// Helper function to format rooms for frontend
+const formatRoomsForFrontend = (rooms) => {
+  return rooms.map(room => ({
+    id: room._id,
+    _id: room._id,
+    name: room.name,
+    host: room.host,
+    userCount: room.users.length,
+    users: room.users.map(user => ({
+      id: user.userId,
+      _id: user.userId,
+      name: user.name,
+      joinedAt: user.joinedAt
+    })),
+    timerState: room.timerState,
+    createdAt: room.createdAt
+  }));
+};
 
 export const handleJoinRoom = async (io, socket, { roomId }) => {
   try {
@@ -57,6 +77,17 @@ export const handleJoinRoom = async (io, socket, { roomId }) => {
       name: socket.user.name
     });
     
+    // Broadcast updated active rooms to all clients via both Socket.IO and Ably
+    await broadcastActiveRooms(io);
+    
+    // Publish user presence via Ably
+    await publishUserPresence('user-joined', {
+      roomId: roomId,
+      userId: socket.user.id,
+      userName: socket.user.name,
+      roomName: room.name
+    });
+    
   } catch (error) {
     console.error('Error joining room:', error);
     socket.emit('error', { message: 'Failed to join room' });
@@ -88,7 +119,60 @@ export const handleLeaveRoom = async (io, socket, { roomId }) => {
       name: socket.user.name
     });
     
+    // Broadcast updated active rooms to all clients
+    await broadcastActiveRooms(io);
+    
+    // Publish user presence via Ably
+    await publishUserPresence('user-left', {
+      roomId: roomId,
+      userId: socket.user.id,
+      userName: socket.user.name,
+      roomName: room.name
+    });
+    
   } catch (error) {
     console.error('Error leaving room:', error);
+  }
+};
+
+export const handleGetActiveRooms = async (io, socket) => {
+  try {
+    console.log(`[Socket] Get active rooms request from user:`, socket.user.id);
+    
+    // Find all rooms that have at least one user
+    const activeRooms = await Room.find({ 
+      'users.0': { $exists: true } // Rooms with at least one user
+    }).populate('host', 'name email');
+    
+    // Format rooms for frontend with user count and user info
+    const formattedRooms = formatRoomsForFrontend(activeRooms);
+    
+    console.log(`[Socket] Sending ${formattedRooms.length} active rooms to user`);
+    socket.emit('active-rooms', formattedRooms);
+    
+  } catch (error) {
+    console.error('Error getting active rooms:', error);
+    socket.emit('error', { message: 'Failed to get active rooms' });
+  }
+};
+
+// Helper function to broadcast active rooms to all connected clients
+export const broadcastActiveRooms = async (io) => {
+  try {
+    const activeRooms = await Room.find({ 
+      'users.0': { $exists: true } 
+    }).populate('host', 'name email');
+    
+    const formattedRooms = formatRoomsForFrontend(activeRooms);
+    
+    // Broadcast via Socket.IO
+    io.emit('active-rooms', formattedRooms);
+    console.log(`[Socket] Broadcasted ${formattedRooms.length} active rooms to all clients`);
+    
+    // Publish via Ably
+    await publishActiveRooms(formattedRooms);
+    
+  } catch (error) {
+    console.error('Error broadcasting active rooms:', error);
   }
 };

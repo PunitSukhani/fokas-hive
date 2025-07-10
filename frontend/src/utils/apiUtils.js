@@ -36,22 +36,16 @@ export const apiCall = async (method, url, data = null, config = {}) => {
         throw new Error(`Unsupported method: ${method}`);
     }
     
-    return response;
+    // For successful responses, return the data with success flag
+    return { success: true, ...response };
   } catch (error) {
     console.error(`API error (${method.toUpperCase()} ${url}):`, error);
     
     // Standardize error response
     if (error.response) {
-      return { 
-        success: false, 
-        error: error.response.data.message || error.message,
-        status: error.response.status 
-      };
+      throw error; // Re-throw to be handled by calling function
     }
     
-    return { 
-      success: false, 
-      error: error.message || 'API request failed' 
-    };
+    throw error; // Re-throw to be handled by calling function
   }
 };

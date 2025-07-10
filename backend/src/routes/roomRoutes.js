@@ -1,5 +1,5 @@
 import express from 'express';
-import { createRoom, getRooms, getRoom, joinRoom } from '../controllers/roomController.js';
+import { createRoom, getRooms, getRoom, joinRoom, getActiveRooms } from '../controllers/roomController.js';
 import { auth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -12,6 +12,9 @@ router.post('/', createRoom);
 
 // Get all rooms
 router.get('/', getRooms);
+
+// Get active rooms (rooms with at least one user)
+router.get('/active', getActiveRooms);
 
 // Get room by id
 router.get('/:id', getRoom);

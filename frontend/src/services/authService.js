@@ -11,23 +11,43 @@ import { apiCall } from "../utils/apiUtils";
  */
 export const login = async (email, password) => {
   try {
+    console.log('Attempting login for:', email);
     const result = await axiosInstance.post(API_PATHS.AUTH.LOGIN, { email, password });
     
+    console.log('Login response:', result);
+    
     // The backend sets the cookie automatically
-    // We only need to return the user data
-    return result;
+    // Check if we have user data in the response
+    // The axiosInstance likely returns the data directly, so check both result.user and result.data.user
+    const user = result.user || result.data?.user || result.data;
+    
+    if (user && (user.id || user._id)) {
+      return { 
+        success: true, 
+        user: user
+      };
+    }
+    
+    // If we don't have user data, something went wrong
+    return { 
+      success: false, 
+      error: 'Login response invalid - no user data received' 
+    };
   } catch (error) {
     console.error('Login error:', error);
     
     // Return user-friendly error message
     // If the error has been processed by axiosInstance interceptor
-    if (error.success === false) {
-      return error;
+    if (error.response) {
+      return { 
+        success: false, 
+        error: error.response.data?.message || error.message || 'Login failed'
+      };
     }
     
     return { 
       success: false, 
-      error: 'Invalid login credentials. Please check your email and password.' 
+      error: error.message || 'Invalid login credentials. Please check your email and password.' 
     };
   }
 };
@@ -62,10 +82,17 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
   try {
-    return await apiCall('get', API_PATHS.AUTH.GET_PROFILE);
+    const userData = await apiCall('get', API_PATHS.AUTH.GET_PROFILE);
+    
+    // Handle different response formats
+    if (userData && (userData.id || userData._id)) {
+      return { success: true, ...userData };
+    }
+    
+    return { success: false, error: 'No user data received' };
   } catch (error) {
     console.error('Get user profile error:', error);
-    return null;
+    return { success: false, error: error.message || 'Failed to get user profile' };
   }
 };
 
@@ -89,11 +116,16 @@ export const isAuthenticated = async () => {
 export const verifyToken = async () => {
   try {
     // Use the /auth/me endpoint to verify token by attempting to get the user profile
-    const response = await apiCall('get', API_PATHS.AUTH.VERIFY);
-    return response;
+    const userData = await apiCall('get', API_PATHS.AUTH.VERIFY);
+    
+    if (userData && (userData.id || userData._id)) {
+      return { success: true, user: userData };
+    }
+    
+    return { success: false, error: 'Token verification failed' };
   } catch (error) {
     console.error('Token verification error:', error);
-    return { success: false };
+    return { success: false, error: error.message || 'Token verification failed' };
   }
 };
 

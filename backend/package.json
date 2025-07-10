@@ -8,6 +8,7 @@
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
+    "ably": "^2.10.0",
     "bcrypt": "^5.1.0",
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",

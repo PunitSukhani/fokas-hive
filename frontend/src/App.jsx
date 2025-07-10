@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
+import RoomPage from './pages/RoomPage'
 import NotFound from './pages/NotFound'
 
 // Import auth components
@@ -47,6 +48,7 @@ function App() {
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/room/:roomId" element={<RoomPage />} />
               {/* Add more protected routes here */}
             </Route>
             

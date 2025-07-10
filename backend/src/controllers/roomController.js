@@ -1,5 +1,53 @@
 import Room from '../models/Room.js';
 import User from '../models/User.js';
+import { getSocketInstance } from '../utils/socketInstance.js';
+import { broadcastActiveRooms } from '../socket/handlers/roomHandler.js';
+import { publishActiveRooms, publishRoomUpdate } from '../services/ablyService.js';
+
+// Helper function to format rooms for frontend
+const formatRoomsForFrontend = (rooms) => {
+  return rooms.map(room => ({
+    id: room._id,
+    _id: room._id,
+    name: room.name,
+    host: room.host,
+    userCount: room.users.length,
+    users: room.users.map(user => ({
+      id: user.userId,
+      _id: user.userId,
+      name: user.name,
+      joinedAt: user.joinedAt
+    })),
+    timerState: room.timerState,
+    createdAt: room.createdAt
+  }));
+};
+
+// Helper function to broadcast active rooms via both Socket.IO and Ably
+const broadcastActiveRoomsToAll = async () => {
+  try {
+    // Get active rooms
+    const activeRooms = await Room.find({ 
+      'users.0': { $exists: true } 
+    }).populate('host', 'name email');
+    
+    const formattedRooms = formatRoomsForFrontend(activeRooms);
+    
+    // Broadcast via Socket.IO (existing functionality)
+    const io = getSocketInstance();
+    if (io) {
+      broadcastActiveRooms(io);
+    }
+    
+    // Publish via Ably (new functionality)
+    await publishActiveRooms(formattedRooms);
+    
+    return formattedRooms;
+  } catch (error) {
+    console.error('Error broadcasting active rooms:', error);
+    throw error;
+  }
+};
 
 export const createRoom = async (req, res) => {
   try {
@@ -18,6 +66,17 @@ export const createRoom = async (req, res) => {
         userId: req.user.id,
         name: req.user.name,
       }]
+    });
+    
+    // Broadcast updated active rooms to all connected clients
+    await broadcastActiveRoomsToAll();
+    
+    // Publish room creation event
+    await publishRoomUpdate('room-created', {
+      id: room._id,
+      name: room.name,
+      host: room.host,
+      userCount: room.users.length
     });
     
     res.status(201).json(room);
@@ -71,9 +130,33 @@ export const joinRoom = async (req, res) => {
     });
     
     await room.save();
+    
+    // Broadcast updated active rooms to all connected clients
+    await broadcastActiveRoomsToAll();
+    
     res.json(room);
   } catch (err) {
     console.error('Error joining room:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// New endpoint for getting active rooms via REST API
+export const getActiveRooms = async (req, res) => {
+  try {
+    console.log('[REST] Get active rooms request');
+    
+    // Find all rooms that have at least one user
+    const activeRooms = await Room.find({ 
+      'users.0': { $exists: true } 
+    }).populate('host', 'name email');
+    
+    const formattedRooms = formatRoomsForFrontend(activeRooms);
+    
+    console.log(`[REST] Returning ${formattedRooms.length} active rooms`);
+    res.json(formattedRooms);
+  } catch (err) {
+    console.error('Error getting active rooms:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

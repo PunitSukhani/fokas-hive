@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.js';
 import roomRoutes from './routes/roomRoutes.js';
 import setupSocketHandlers from './socket/socketHandlers.js';
+import { setSocketInstance } from './utils/socketInstance.js';
 
 dotenv.config();
 
@@ -79,6 +80,7 @@ io.engine.on("initial_headers", (headers, req) => {
 });
 
 // Setup Socket.IO handlers
+setSocketInstance(io);
 setupSocketHandlers(io);
 
 // MongoDB connection
