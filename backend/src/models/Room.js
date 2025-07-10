@@ -28,6 +28,14 @@ const roomSchema = new mongoose.Schema({
     cycleCount: { 
       type: Number, 
       default: 0 
+    },
+    startedAt: {
+      type: Date,
+      default: null
+    },
+    pausedAt: {
+      type: Date,
+      default: null
     }
   },
   createdAt: { 

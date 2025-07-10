@@ -4,7 +4,9 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { getRoomDetails, joinRoom } from '../services/roomService';
 import useSocket from '../hooks/useSocket';
-import { HiArrowLeft, HiUsers, HiClock, HiPlay, HiPause, HiStop } from 'react-icons/hi';
+import useTimer from '../hooks/useTimer';
+import Timer from '../components/room/Timer';
+import { HiArrowLeft, HiUsers } from 'react-icons/hi';
 
 const RoomPage = () => {
   const { roomId } = useParams();
@@ -17,6 +19,17 @@ const RoomPage = () => {
   
   // Socket connection for real-time updates
   const { socket, isConnected } = useSocket('http://localhost:5000');
+
+  // Check if current user is the host
+  const isHost = room?.host && (
+    currentUser?.id === room.host.id || 
+    currentUser?.id === room.host._id ||
+    currentUser?._id === room.host.id ||
+    currentUser?._id === room.host._id
+  );
+
+  // Timer functionality
+  const timerHook = useTimer(socket, roomId, room?.timerState, isHost);
 
   // Fetch room details and join the room
   useEffect(() => {
@@ -88,12 +101,30 @@ const RoomPage = () => {
       console.log('Room joined event received:', roomData);
       setRoom(roomData);
     };
+
+    // Listen for timer events
+    const handleTimerUpdate = (timerState) => {
+      console.log('Timer state updated:', timerState);
+      setRoom(prevRoom => {
+        if (!prevRoom) return prevRoom;
+        return {
+          ...prevRoom,
+          timerState: timerState
+        };
+      });
+    };
     
     // Set up event listeners
     socket.on('user-list-updated', handleUserListUpdated);
     socket.on('user-joined', handleUserJoined);
     socket.on('user-left', handleUserLeft);
     socket.on('room-joined', handleRoomJoined);
+    
+    // Timer event listeners (additional to useTimer hook)
+    socket.on('timer-started', handleTimerUpdate);
+    socket.on('timer-paused', handleTimerUpdate);
+    socket.on('timer-reset', handleTimerUpdate);
+    socket.on('timer-mode-changed', handleTimerUpdate);
     
     // Cleanup
     return () => {
@@ -102,6 +133,10 @@ const RoomPage = () => {
       socket.off('user-joined', handleUserJoined);
       socket.off('user-left', handleUserLeft);
       socket.off('room-joined', handleRoomJoined);
+      socket.off('timer-started', handleTimerUpdate);
+      socket.off('timer-paused', handleTimerUpdate);
+      socket.off('timer-reset', handleTimerUpdate);
+      socket.off('timer-mode-changed', handleTimerUpdate);
       
       // Leave the socket room when component unmounts or roomId changes
       socket.emit('leave-room', { roomId });
@@ -168,38 +203,15 @@ const RoomPage = () => {
           {/* Main Content Area */}
           <div className="lg:col-span-2">
             {/* Timer Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-50 p-8 mb-6">
-              <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <HiClock size={24} />
-                Study Timer
-              </h2>
-              
-              <div className="text-center">
-                <div className="text-6xl font-bold text-blue-600 mb-6">
-                  {Math.floor((room.timerState?.timeRemaining || 1500) / 60)}:
-                  {String((room.timerState?.timeRemaining || 1500) % 60).padStart(2, '0')}
-                </div>
-                
-                <div className="flex items-center justify-center gap-4 mb-6">
-                  <button className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                    <HiPlay size={20} />
-                    Start
-                  </button>
-                  <button className="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition-colors flex items-center gap-2">
-                    <HiPause size={20} />
-                    Pause
-                  </button>
-                  <button className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
-                    <HiStop size={20} />
-                    Reset
-                  </button>
-                </div>
-                
-                <p className="text-slate-600">
-                  Mode: <span className="font-medium capitalize">{room.timerState?.mode || 'focus'}</span>
-                </p>
-              </div>
-            </div>
+            <Timer
+              timerState={timerHook}
+              onStart={timerHook.startTimer}
+              onPause={timerHook.pauseTimer}
+              onReset={timerHook.resetTimer}
+              onModeChange={timerHook.changeMode}
+              canControl={timerHook.canControl}
+              className="mb-6"
+            />
 
             {/* Chat Section - Placeholder */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-50 p-8">
@@ -221,7 +233,7 @@ const RoomPage = () => {
               
               <div className="space-y-3">
                 {room.users?.map((user, index) => (
-                  <div key={user.id || user._id || index} className="flex items-center gap-3">
+                  <div key={`room-${roomId}-user-${user.id || user._id || index}`} className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                       {user.name?.charAt(0).toUpperCase() || 'U'}
                     </div>

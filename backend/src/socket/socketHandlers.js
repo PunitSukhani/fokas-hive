@@ -6,7 +6,8 @@ import {
   handleStartTimer,
   handlePauseTimer,
   handleResetTimer,
-  handleChangeTimerMode
+  handleChangeTimerMode,
+  handleTimerCompleted
 } from './handlers/timerHandler.js';
 import { handleDisconnect } from './handlers/disconnectHandler.js';
 
@@ -38,6 +39,7 @@ export default function setupSocketHandlers(io) {
     socket.on('pause-timer', (data) => handlePauseTimer(io, socket, data));
     socket.on('reset-timer', (data) => handleResetTimer(io, socket, data));
     socket.on('change-timer-mode', (data) => handleChangeTimerMode(io, socket, data));
+    socket.on('timer-completed', (data) => handleTimerCompleted(io, socket, data));
 
     // Handle disconnection
     socket.on('disconnect', () => handleDisconnect(io, socket, activeUsers));

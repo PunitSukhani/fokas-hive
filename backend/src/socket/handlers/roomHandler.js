@@ -1,4 +1,4 @@
-import Room from '../../models/Room.js';
+  import Room from '../../models/Room.js';
 import { publishActiveRooms, publishUserPresence } from '../../services/ablyService.js';
 
 // Helper function to format rooms for frontend
@@ -117,6 +117,28 @@ export const handleLeaveRoom = async (io, socket, { roomId }) => {
     room.users = room.users.filter(
       (u) => u.userId.toString() !== socket.user.id.toString()
     );
+    
+    // Check if room is now empty
+    if (room.users.length === 0) {
+      console.log(`[Socket] Room ${room.name} is empty, deleting it`);
+      await Room.findByIdAndDelete(roomId);
+      
+      // Notify that room was deleted
+      io.emit('room-deleted', { roomId, roomName: room.name });
+      
+      // Broadcast updated active rooms to all clients
+      await broadcastActiveRooms(io);
+      
+      // Publish user presence via Ably
+      await publishUserPresence('user-left', {
+        roomId: roomId,
+        userId: socket.user.id,
+        userName: socket.user.name,
+        roomName: room.name
+      });
+      
+      return;
+    }
     
     await room.save();
     

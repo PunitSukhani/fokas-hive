@@ -1,4 +1,5 @@
 import Room from '../../models/Room.js';
+import { broadcastActiveRooms } from './roomHandler.js';
 
 export const handleDisconnect = async (io, socket, activeUsers) => {
   console.log('User disconnected:', socket.id);
@@ -20,6 +21,18 @@ export const handleDisconnect = async (io, socket, activeUsers) => {
           (u) => u.socketId !== socket.id
         );
         
+        // Check if room is now empty
+        if (room.users.length === 0) {
+          console.log(`[Disconnect] Room ${room.name} is empty, deleting it`);
+          await Room.findByIdAndDelete(room._id);
+          
+          // Notify that room was deleted
+          io.emit('room-deleted', { roomId: room._id, roomName: room.name });
+          
+          console.log(`[Disconnect] Deleted empty room: ${room.name}`);
+          continue; // Skip further processing for deleted room
+        }
+        
         await room.save();
         
         // Broadcast updated user list (format for frontend)
@@ -38,6 +51,10 @@ export const handleDisconnect = async (io, socket, activeUsers) => {
           name: socket.user.name
         });
       }
+      
+      // Broadcast updated active rooms to all clients
+      await broadcastActiveRooms(io);
+      
     } catch (error) {
       console.error('Error handling disconnect:', error);
     }

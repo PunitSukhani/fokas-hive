@@ -131,7 +131,7 @@ const RoomList = ({
                 <div className="flex -space-x-2 overflow-hidden mb-2">
                   {room.users.slice(0, 4).map((user, index) => (
                     <div 
-                      key={user.id || user._id || index} 
+                      key={`${room.id || room._id}-user-${user.id || user._id || index}`} 
                       className={`inline-block h-8 w-8 rounded-full ring-2 ring-white ${getAvatarColor(user.name)} text-white flex items-center justify-center text-xs font-semibold transition-transform hover:scale-110`}
                       title={user.name || 'User'}
                     >
