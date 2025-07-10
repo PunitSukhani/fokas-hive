@@ -10,9 +10,10 @@ const formatRoomsForFrontend = (rooms) => {
     host: room.host,
     userCount: room.users.length,
     users: room.users.map(user => ({
-      id: user.userId,
-      _id: user.userId,
-      name: user.name,
+      id: user.userId?._id || user.userId,
+      _id: user.userId?._id || user.userId,
+      name: user.userId?.name || user.name,
+      email: user.userId?.email,
       joinedAt: user.joinedAt
     })),
     timerState: room.timerState,
@@ -63,12 +64,24 @@ export const handleJoinRoom = async (io, socket, { roomId }) => {
     socket.join(roomId);
     console.log(`[Socket] Socket joined room: ${roomId}`);
     
-    // Broadcast updated user list to room
-    io.to(roomId).emit('user-list-updated', room.users);
-    console.log(`[Socket] Emitted user-list-updated event`);
+    // Broadcast updated user list to room (format for frontend)
+    const formattedUsers = room.users.map(user => ({
+      id: user.userId || user.userId,
+      _id: user.userId || user.userId,
+      name: user.name,
+      joinedAt: user.joinedAt,
+      socketId: user.socketId
+    }));
+    io.to(roomId).emit('user-list-updated', formattedUsers);
+    console.log(`[Socket] Emitted user-list-updated event with formatted users`);
     
-    // Send room data to user
-    socket.emit('room-joined', room);
+    // Send room data to user (populate host data)
+    await room.populate('host', 'name email');
+    const formattedRoom = {
+      ...room.toObject(),
+      users: formattedUsers
+    };
+    socket.emit('room-joined', formattedRoom);
     console.log(`[Socket] Emitted room-joined event to socket ${socket.id}`);
     
     // Notify others that user joined
@@ -110,8 +123,15 @@ export const handleLeaveRoom = async (io, socket, { roomId }) => {
     // Leave socket room
     socket.leave(roomId);
     
-    // Broadcast updated user list
-    io.to(roomId).emit('user-list-updated', room.users);
+    // Broadcast updated user list (format for frontend)
+    const formattedUsers = room.users.map(user => ({
+      id: user.userId || user.userId,
+      _id: user.userId || user.userId,
+      name: user.name,
+      joinedAt: user.joinedAt,
+      socketId: user.socketId
+    }));
+    io.to(roomId).emit('user-list-updated', formattedUsers);
     
     // Notify others that user left
     socket.to(roomId).emit('user-left', {

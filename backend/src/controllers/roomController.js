@@ -13,9 +13,10 @@ const formatRoomsForFrontend = (rooms) => {
     host: room.host,
     userCount: room.users.length,
     users: room.users.map(user => ({
-      id: user.userId,
-      _id: user.userId,
-      name: user.name,
+      id: user.userId?._id || user.userId,
+      _id: user.userId?._id || user.userId,
+      name: user.userId?.name || user.name,
+      email: user.userId?.email,
       joinedAt: user.joinedAt
     })),
     timerState: room.timerState,
@@ -26,10 +27,12 @@ const formatRoomsForFrontend = (rooms) => {
 // Helper function to broadcast active rooms via both Socket.IO and Ably
 const broadcastActiveRoomsToAll = async () => {
   try {
-    // Get active rooms
+    // Get active rooms with populated user data
     const activeRooms = await Room.find({ 
       'users.0': { $exists: true } 
-    }).populate('host', 'name email');
+    })
+    .populate('host', 'name email')
+    .populate('users.userId', 'name email');
     
     const formattedRooms = formatRoomsForFrontend(activeRooms);
     
@@ -58,15 +61,22 @@ export const createRoom = async (req, res) => {
     const existingRoom = await Room.findOne({ name });
     if (existingRoom) return res.status(409).json({ message: 'Room name already in use' });
     
+    // Get user info to ensure we have the name
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
     // Create new room with user as host
     const room = await Room.create({
       name,
       host: req.user.id,
       users: [{
         userId: req.user.id,
-        name: req.user.name,
+        name: user.name,
       }]
     });
+    
+    // Populate the host field for the response
+    await room.populate('host', 'name email');
     
     // Broadcast updated active rooms to all connected clients
     await broadcastActiveRoomsToAll();
@@ -98,9 +108,26 @@ export const getRooms = async (req, res) => {
 
 export const getRoom = async (req, res) => {
   try {
-    const room = await Room.findById(req.params.id).populate('host', 'name email');
+    const room = await Room.findById(req.params.id)
+      .populate('host', 'name email')
+      .populate('users.userId', 'name email'); // Populate user details in the users array
+    
     if (!room) return res.status(404).json({ message: 'Room not found' });
-    res.json(room);
+    
+    // Format the response to include user details properly
+    const formattedRoom = {
+      ...room.toObject(),
+      users: room.users.map(user => ({
+        id: user.userId?._id || user.userId,
+        _id: user.userId?._id || user.userId,
+        name: user.userId?.name || user.name,
+        email: user.userId?.email,
+        joinedAt: user.joinedAt,
+        socketId: user.socketId
+      }))
+    };
+    
+    res.json(formattedRoom);
   } catch (err) {
     console.error('Error getting room:', err);
     res.status(500).json({ message: 'Server error' });
@@ -146,10 +173,12 @@ export const getActiveRooms = async (req, res) => {
   try {
     console.log('[REST] Get active rooms request');
     
-    // Find all rooms that have at least one user
+    // Find all rooms that have at least one user with populated data
     const activeRooms = await Room.find({ 
       'users.0': { $exists: true } 
-    }).populate('host', 'name email');
+    })
+    .populate('host', 'name email')
+    .populate('users.userId', 'name email');
     
     const formattedRooms = formatRoomsForFrontend(activeRooms);
     

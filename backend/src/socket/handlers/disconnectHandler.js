@@ -22,8 +22,15 @@ export const handleDisconnect = async (io, socket, activeUsers) => {
         
         await room.save();
         
-        // Broadcast updated user list
-        io.to(room._id.toString()).emit('user-list-updated', room.users);
+        // Broadcast updated user list (format for frontend)
+        const formattedUsers = room.users.map(user => ({
+          id: user.userId || user.userId,
+          _id: user.userId || user.userId,
+          name: user.name,
+          joinedAt: user.joinedAt,
+          socketId: user.socketId
+        }));
+        io.to(room._id.toString()).emit('user-list-updated', formattedUsers);
         
         // Notify others that user left
         io.to(room._id.toString()).emit('user-left', {

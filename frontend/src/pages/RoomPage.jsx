@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { getRoomDetails } from '../services/roomService';
+import { getRoomDetails, joinRoom } from '../services/roomService';
+import useSocket from '../hooks/useSocket';
 import { HiArrowLeft, HiUsers, HiClock, HiPlay, HiPause, HiStop } from 'react-icons/hi';
 
 const RoomPage = () => {
@@ -13,8 +14,11 @@ const RoomPage = () => {
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Socket connection for real-time updates
+  const { socket, isConnected } = useSocket('http://localhost:5000');
 
-  // Fetch room details
+  // Fetch room details and join the room
   useEffect(() => {
     const fetchRoom = async () => {
       try {
@@ -22,6 +26,16 @@ const RoomPage = () => {
         const roomData = await getRoomDetails(roomId);
         setRoom(roomData);
         setError(null);
+        
+        // Join the room via REST API first, then join socket room
+        if (roomData && currentUser) {
+          try {
+            await joinRoom(roomId);
+            console.log('Successfully joined room via REST API');
+          } catch (joinError) {
+            console.warn('Failed to join room via REST API:', joinError);
+          }
+        }
       } catch (error) {
         console.error('Error fetching room:', error);
         setError('Failed to load room');
@@ -34,9 +48,71 @@ const RoomPage = () => {
     if (roomId) {
       fetchRoom();
     }
-  }, [roomId]);
+  }, [roomId, currentUser]);
+  
+  // Socket event listeners for real-time updates
+  useEffect(() => {
+    if (!socket || !isConnected || !roomId || !currentUser) return;
+    
+    console.log('Setting up socket listeners for room:', roomId);
+    
+    // Join the socket room
+    socket.emit('join-room', { roomId });
+    
+    // Listen for user list updates
+    const handleUserListUpdated = (users) => {
+      console.log('User list updated:', users);
+      setRoom(prevRoom => {
+        if (!prevRoom) return prevRoom;
+        return {
+          ...prevRoom,
+          users: users // Backend now sends properly formatted user data
+        };
+      });
+    };
+    
+    // Listen for user joined
+    const handleUserJoined = (userData) => {
+      console.log('User joined room:', userData);
+      toast.info(`${userData.name} joined the room`);
+    };
+    
+    // Listen for user left
+    const handleUserLeft = (userData) => {
+      console.log('User left room:', userData);
+      toast.info(`${userData.name} left the room`);
+    };
+    
+    // Listen for room updates
+    const handleRoomJoined = (roomData) => {
+      console.log('Room joined event received:', roomData);
+      setRoom(roomData);
+    };
+    
+    // Set up event listeners
+    socket.on('user-list-updated', handleUserListUpdated);
+    socket.on('user-joined', handleUserJoined);
+    socket.on('user-left', handleUserLeft);
+    socket.on('room-joined', handleRoomJoined);
+    
+    // Cleanup
+    return () => {
+      console.log('Cleaning up socket listeners for room:', roomId);
+      socket.off('user-list-updated', handleUserListUpdated);
+      socket.off('user-joined', handleUserJoined);
+      socket.off('user-left', handleUserLeft);
+      socket.off('room-joined', handleRoomJoined);
+      
+      // Leave the socket room when component unmounts or roomId changes
+      socket.emit('leave-room', { roomId });
+    };
+  }, [socket, isConnected, roomId, currentUser]);
 
   const handleBackToDashboard = () => {
+    // Leave the room before navigating away
+    if (socket && isConnected && roomId) {
+      socket.emit('leave-room', { roomId });
+    }
     navigate('/dashboard');
   };
 
@@ -152,7 +228,7 @@ const RoomPage = () => {
                     <div className="flex-1">
                       <p className="font-medium text-slate-800">{user.name || 'Unknown User'}</p>
                       <p className="text-xs text-slate-500">
-                        {user.id === room.host?.id && '👑 Host'}
+                        {(user.id === room.host?.id || user.id === room.host?._id || user._id === room.host?.id || user._id === room.host?._id) && '👑 Host'}
                       </p>
                     </div>
                   </div>
