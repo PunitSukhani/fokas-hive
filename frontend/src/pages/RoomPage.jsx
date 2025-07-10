@@ -29,7 +29,7 @@ const RoomPage = () => {
   );
 
   // Timer functionality
-  const timerHook = useTimer(socket, roomId, room?.timerState, isHost);
+  const timerHook = useTimer(socket, roomId, room?.timerState, isHost, room?.timerSettings);
 
   // Fetch room details and join the room
   useEffect(() => {
@@ -264,6 +264,27 @@ const RoomPage = () => {
                   <span className="text-slate-500">Room ID:</span>
                   <span className="text-slate-800 font-mono text-xs">{roomId}</span>
                 </div>
+                {room.timerSettings && (
+                  <>
+                    <div className="border-t pt-2 mt-3">
+                      <div className="text-slate-500 mb-2 font-medium">Timer Settings</div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Focus Session:</span>
+                          <span className="text-slate-800">{Math.round(room.timerSettings.focusDuration / 60)} minutes</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Short Break:</span>
+                          <span className="text-slate-800">{Math.round(room.timerSettings.shortBreakDuration / 60)} minutes</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Long Break:</span>
+                          <span className="text-slate-800">{Math.round(room.timerSettings.longBreakDuration / 60)} minutes</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -17,6 +17,7 @@ const formatRoomsForFrontend = (rooms) => {
       joinedAt: user.joinedAt
     })),
     timerState: room.timerState,
+    timerSettings: room.timerSettings,
     createdAt: room.createdAt
   }));
 };

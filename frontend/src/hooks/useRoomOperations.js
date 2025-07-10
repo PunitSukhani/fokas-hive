@@ -14,6 +14,11 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
   const [filteredRooms, setFilteredRooms] = useState(initialRooms);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
+  
+  // Timer duration states (in minutes)
+  const [focusDuration, setFocusDuration] = useState(25);
+  const [shortBreakDuration, setShortBreakDuration] = useState(5);
+  const [longBreakDuration, setLongBreakDuration] = useState(15);
 
   // Search functionality with debounce
   const debouncedSearch = useCallback(
@@ -49,10 +54,27 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
       return;
     }
     
+    // Validate timer durations
+    if (focusDuration < 1 || focusDuration > 180) {
+      toast.error('Focus duration must be between 1 and 180 minutes', { toastId: 'invalid-focus' });
+      return;
+    }
+    if (shortBreakDuration < 1 || shortBreakDuration > 60) {
+      toast.error('Short break duration must be between 1 and 60 minutes', { toastId: 'invalid-short-break' });
+      return;
+    }
+    if (longBreakDuration < 1 || longBreakDuration > 180) {
+      toast.error('Long break duration must be between 1 and 180 minutes', { toastId: 'invalid-long-break' });
+      return;
+    }
+    
     // Generate a unique room name by appending timestamp if needed
     let roomName = newRoomName.trim();
     const roomData = {
-      name: roomName
+      name: roomName,
+      focusDuration: focusDuration,
+      shortBreakDuration: shortBreakDuration,
+      longBreakDuration: longBreakDuration
     };
     
     try {
@@ -75,6 +97,10 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
       
       setShowCreateModal(false);
       setNewRoomName('');
+      // Reset timer durations to defaults
+      setFocusDuration(25);
+      setShortBreakDuration(5);
+      setLongBreakDuration(15);
       
       // Navigate to the created room
       navigate(`/room/${createdRoom._id}`);
@@ -89,7 +115,12 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
         const uniqueRoomName = `${roomName} (${timestamp})`;
         
         try {
-          const retryRoomData = { name: uniqueRoomName };
+          const retryRoomData = { 
+            name: uniqueRoomName,
+            focusDuration: focusDuration,
+            shortBreakDuration: shortBreakDuration,
+            longBreakDuration: longBreakDuration
+          };
           const createdRoom = await createRoomAPI(retryRoomData);
           
           toast.success(`Room "${createdRoom.name}" created successfully!`, {
@@ -98,6 +129,10 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
           
           setShowCreateModal(false);
           setNewRoomName('');
+          // Reset timer durations to defaults
+          setFocusDuration(25);
+          setShortBreakDuration(5);
+          setLongBreakDuration(15);
           navigate(`/room/${createdRoom._id}`);
           return;
         } catch (retryError) {
@@ -176,8 +211,14 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
     filteredRooms,
     showCreateModal,
     newRoomName,
+    focusDuration,
+    shortBreakDuration,
+    longBreakDuration,
     setShowCreateModal,
     setNewRoomName,
+    setFocusDuration,
+    setShortBreakDuration,
+    setLongBreakDuration,
     handleSearchChange,
     handleCreateRoom,
     handleJoinRoom,

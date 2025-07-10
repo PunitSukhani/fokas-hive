@@ -1,231 +1,194 @@
 import React from 'react';
-import { HiClock, HiPlay, HiPause, HiStop, HiRefresh } from 'react-icons/hi';
+import { HiPlay, HiPause } from 'react-icons/hi';
+import { HiArrowPath } from 'react-icons/hi2';
 
-/**
- * Timer Component for Study Rooms
- * Displays and controls the Pomodoro-style timer
- */
 const Timer = ({ 
-  timerState,
-  onStart,
+  timerState, 
+  onStart, 
   onPause, 
-  onReset,
-  onModeChange,
+  onReset, 
+  onModeChange, 
   canControl = false,
-  className = ""
+  className = "",
+  room
 }) => {
-  const {
-    formattedTime,
-    modeDisplayName,
-    isRunning,
-    mode,
-    progress,
-    cycleCount
-  } = timerState;
+  // Format time to MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
-  // Mode switching handler
-  const handleModeChange = (newMode) => {
-    if (canControl && onModeChange) {
-      onModeChange(newMode);
+  // Get progress percentage for circular progress bar
+  const getProgress = () => {
+    if (!timerState.totalTime || timerState.totalTime === 0) return 0;
+    return ((timerState.totalTime - timerState.timeRemaining) / timerState.totalTime) * 100;
+  };
+
+  // Get mode display name
+  const getModeDisplayName = (mode) => {
+    switch (mode) {
+      case 'focus': return 'Focus Session';
+      case 'shortBreak': return 'Short Break';
+      case 'longBreak': return 'Long Break';
+      default: return 'Focus Session';
     }
   };
 
-  // Get mode-specific colors
-  const getModeColors = (timerMode) => {
-    const colors = {
-      focus: {
-        primary: 'text-blue-600',
-        bg: 'bg-blue-50',
-        border: 'border-blue-200',
-        button: 'bg-blue-600 hover:bg-blue-700',
-        progress: 'stroke-blue-600'
-      },
-      shortBreak: {
-        primary: 'text-green-600',
-        bg: 'bg-green-50',
-        border: 'border-green-200',
-        button: 'bg-green-600 hover:bg-green-700',
-        progress: 'stroke-green-600'
-      },
-      longBreak: {
-        primary: 'text-purple-600',
-        bg: 'bg-purple-50',
-        border: 'border-purple-200',
-        button: 'bg-purple-600 hover:bg-purple-700',
-        progress: 'stroke-purple-600'
-      }
-    };
-    return colors[timerMode] || colors.focus;
+  // Get timer duration for mode
+  const getModeDuration = (mode) => {
+    if (!room?.timerSettings) {
+      // Default durations
+      const defaults = { focus: 25, shortBreak: 5, longBreak: 15 };
+      return defaults[mode] || 25;
+    }
+    
+    switch (mode) {
+      case 'focus': return Math.floor(room.timerSettings.focusDuration / 60);
+      case 'shortBreak': return Math.floor(room.timerSettings.shortBreakDuration / 60);
+      case 'longBreak': return Math.floor(room.timerSettings.longBreakDuration / 60);
+      default: return 25;
+    }
   };
 
-  const colors = getModeColors(mode);
+  const progress = getProgress();
+  const radius = 120;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-50 p-8 ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-          <HiClock size={24} />
-          Study Timer
-        </h2>
+    <div className={`bg-white rounded-2xl shadow-lg border border-gray-100 p-8 max-w-md mx-auto ${className}`}>
+      {/* Circular Timer Display */}
+      <div className="relative flex items-center justify-center mb-8">
+        <svg className="transform -rotate-90 w-80 h-80">
+          {/* Background circle */}
+          <circle
+            cx="160"
+            cy="160"
+            r={radius}
+            stroke="#E5E7EB"
+            strokeWidth="8"
+            fill="none"
+          />
+          {/* Progress circle */}
+          <circle
+            cx="160"
+            cy="160"
+            r={radius}
+            stroke="#3B82F6"
+            strokeWidth="8"
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            style={{ 
+              transition: 'stroke-dashoffset 0.5s ease-in-out',
+            }}
+          />
+          {/* Progress dot */}
+          {progress > 0 && (
+            <circle
+              cx={160 + radius * Math.cos((progress / 100) * 2 * Math.PI - Math.PI / 2)}
+              cy={160 + radius * Math.sin((progress / 100) * 2 * Math.PI - Math.PI / 2)}
+              r="6"
+              fill="#3B82F6"
+            />
+          )}
+        </svg>
         
-        {/* Cycle Count */}
-        {cycleCount > 0 && (
-          <div className="text-sm text-slate-500">
-            Cycle {cycleCount}
+        {/* Timer Display */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="text-6xl font-bold text-blue-600 mb-2">
+            {formatTime(timerState.timeRemaining || 0)}
           </div>
-        )}
+          <div className="text-lg text-gray-600 mb-1">
+            {getModeDisplayName(timerState.mode)}
+          </div>
+          <div className="text-sm text-gray-500">
+            {timerState.isRunning ? 'Running' : 'Paused'}
+          </div>
+        </div>
       </div>
 
-      {/* Timer Display */}
-      <div className="text-center mb-8">
-        {/* Circular Progress */}
-        <div className="relative inline-block mb-6">
-          <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 100 100">
-            {/* Background circle */}
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke="#f1f5f9"
-              strokeWidth="6"
-            />
-            {/* Progress circle */}
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 45}`}
-              strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress / 100)}`}
-              className={`transition-all duration-1000 ${colors.progress}`}
-            />
-          </svg>
+      {/* Mode Selection Buttons */}
+      <div className="flex justify-center gap-2 mb-8">
+        {['focus', 'shortBreak', 'longBreak'].map((mode) => {
+          const isActive = timerState.mode === mode;
+          const modeLabels = {
+            focus: 'Focus',
+            shortBreak: 'Short Break', 
+            longBreak: 'Long Break'
+          };
           
-          {/* Time Display */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <div className={`text-4xl font-bold ${colors.primary} mb-2`}>
-                {formattedTime}
-              </div>
-              <div className="text-sm text-slate-500 capitalize">
-                {modeDisplayName}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Indicator */}
-        <div className="mb-6">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
-            isRunning 
-              ? 'bg-green-100 text-green-700' 
-              : 'bg-gray-100 text-gray-600'
-          }`}>
-            <div className={`w-2 h-2 rounded-full ${
-              isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
-            }`}></div>
-            {isRunning ? 'Running' : 'Paused'}
-          </div>
-        </div>
-      </div>
-
-      {/* Mode Selection */}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium text-slate-700 mb-3">Timer Mode</h3>
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { key: 'focus', label: 'Focus', duration: '25m' },
-            { key: 'shortBreak', label: 'Short Break', duration: '5m' },
-            { key: 'longBreak', label: 'Long Break', duration: '15m' }
-          ].map((modeOption) => (
+          return (
             <button
-              key={modeOption.key}
-              onClick={() => handleModeChange(modeOption.key)}
-              disabled={!canControl}
-              className={`p-3 rounded-lg text-sm font-medium transition-all ${
-                mode === modeOption.key
-                  ? `${colors.bg} ${colors.primary} ${colors.border} border-2`
-                  : 'bg-gray-50 text-gray-600 border-2 border-transparent hover:bg-gray-100'
+              key={mode}
+              onClick={() => canControl && onModeChange && onModeChange(mode)}
+              disabled={!canControl || timerState.isRunning}
+              className={`px-6 py-3 text-sm font-medium rounded-lg transition-all ${
+                isActive 
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               } ${
-                canControl 
-                  ? 'cursor-pointer' 
-                  : 'cursor-not-allowed opacity-50'
+                !canControl || timerState.isRunning 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'cursor-pointer'
               }`}
             >
-              <div>{modeOption.label}</div>
-              <div className="text-xs opacity-75">{modeOption.duration}</div>
+              {modeLabels[mode]}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {/* Control Buttons */}
-      <div className="flex items-center justify-center gap-3">
-        {!isRunning ? (
-          <button
-            onClick={onStart}
-            disabled={!canControl}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all ${
-              canControl 
-                ? `${colors.button} transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg`
-                : 'bg-gray-400 cursor-not-allowed'
-            }`}
-          >
-            <HiPlay size={20} />
-            Start
-          </button>
-        ) : (
-          <button
-            onClick={onPause}
-            disabled={!canControl}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all ${
-              canControl 
-                ? 'bg-yellow-600 hover:bg-yellow-700 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg'
-                : 'bg-gray-400 cursor-not-allowed'
-            }`}
-          >
-            <HiPause size={20} />
-            Pause
-          </button>
-        )}
-        
+      <div className="flex justify-center gap-4 mb-8">
+        {/* Start/Pause Button */}
         <button
-          onClick={onReset}
+          onClick={timerState.isRunning ? onPause : onStart}
           disabled={!canControl}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all ${
+          className={`flex items-center justify-center px-8 py-3 rounded-lg text-white font-medium transition-all ${
             canControl 
-              ? 'bg-red-600 hover:bg-red-700 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg'
+              ? 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg' 
               : 'bg-gray-400 cursor-not-allowed'
           }`}
         >
-          <HiRefresh size={20} />
+          {timerState.isRunning ? (
+            <>
+              <HiPause size={20} className="mr-2" />
+              Pause
+            </>
+          ) : (
+            <>
+              <HiPlay size={20} className="mr-2" />
+              Start
+            </>
+          )}
+        </button>
+
+        {/* Reset Button */}
+        <button
+          onClick={onReset}
+          disabled={!canControl}
+          className={`flex items-center justify-center px-6 py-3 rounded-lg border-2 font-medium transition-all ${
+            canControl
+              ? 'border-blue-600 text-blue-600 hover:bg-blue-50'
+              : 'border-gray-300 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          <HiArrowPath size={20} className="mr-2" />
           Reset
         </button>
       </div>
 
-      {/* Permission Notice */}
+      {/* Additional Info */}
       {!canControl && (
-        <div className="mt-4 text-center">
-          <p className="text-sm text-slate-500">
-            Only the room host can control the timer
+        <div className="text-center mt-4">
+          <p className="text-sm text-gray-500">
+            Only the host can control the timer
           </p>
         </div>
       )}
-
-      {/* Timer Tips */}
-      <div className="mt-6 p-4 bg-slate-50 rounded-lg">
-        <h4 className="text-sm font-medium text-slate-700 mb-2">Pomodoro Technique</h4>
-        <div className="text-xs text-slate-600 space-y-1">
-          <p>• 25 min focus → 5 min short break</p>
-          <p>• After 4 focus sessions → 15 min long break</p>
-          <p>• Stay focused during work sessions</p>
-        </div>
-      </div>
     </div>
   );
 };

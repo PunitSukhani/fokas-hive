@@ -17,10 +17,6 @@ import ProtectedRoute from './components/common/ProtectedRoute'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
-// Development tools - will be removed in production
-import AuthServiceTest from './components/dev/AuthServiceTest'
-// DevModeIndicator removed
-
 function App() {
   return (
     <Router>
@@ -51,11 +47,6 @@ function App() {
               <Route path="/room/:roomId" element={<RoomPage />} />
               {/* Add more protected routes here */}
             </Route>
-            
-            {/* Development Testing Routes */}
-            {process.env.NODE_ENV !== 'production' && (
-              <Route path="/dev/test-auth" element={<AuthServiceTest />} />
-            )}
             
             {/* Catch-all Route */}
             <Route path="*" element={<NotFound />} />

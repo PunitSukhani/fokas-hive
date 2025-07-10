@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
  * Custom hook for managing timer functionality in study rooms
  * Handles countdown, state management, and socket communication
  */
-const useTimer = (socket, roomId, initialTimerState = null, isHost = false) => {
+const useTimer = (socket, roomId, initialTimerState = null, isHost = false, timerSettings = null) => {
   const [timerState, setTimerState] = useState({
     mode: 'focus',
     timeRemaining: 25 * 60, // 25 minutes in seconds
@@ -18,11 +18,11 @@ const useTimer = (socket, roomId, initialTimerState = null, isHost = false) => {
   const intervalRef = useRef(null);
   const lastUpdateRef = useRef(Date.now());
 
-  // Timer durations in seconds
+  // Timer durations in seconds - use room settings if available, otherwise defaults
   const TIMER_DURATIONS = {
-    focus: 25 * 60,      // 25 minutes
-    shortBreak: 5 * 60,  // 5 minutes
-    longBreak: 15 * 60   // 15 minutes
+    focus: timerSettings?.focusDuration || 25 * 60,      // 25 minutes
+    shortBreak: timerSettings?.shortBreakDuration || 5 * 60,  // 5 minutes
+    longBreak: timerSettings?.longBreakDuration || 15 * 60   // 15 minutes
   };
 
   // Update timer state when props change

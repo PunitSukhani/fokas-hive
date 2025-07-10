@@ -175,6 +175,18 @@ const RoomList = ({
               </div>
             )}
 
+            {/* Custom Timer Settings */}
+            {room.timerSettings && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <div className="text-xs text-blue-700 font-medium mb-1">Custom Timer Settings</div>
+                <div className="text-xs text-blue-600 space-x-3">
+                  <span>Focus: {Math.round(room.timerSettings.focusDuration / 60)}m</span>
+                  <span>Short: {Math.round(room.timerSettings.shortBreakDuration / 60)}m</span>
+                  <span>Long: {Math.round(room.timerSettings.longBreakDuration / 60)}m</span>
+                </div>
+              </div>
+            )}
+
             {/* Room Stats */}
             <div className="flex justify-between items-center text-sm text-slate-400">
               <div className="flex items-center gap-1">

@@ -20,6 +20,7 @@ const formatRoomsForFrontend = (rooms) => {
       joinedAt: user.joinedAt
     })),
     timerState: room.timerState,
+    timerSettings: room.timerSettings,
     createdAt: room.createdAt
   }));
 };
@@ -54,8 +55,25 @@ const broadcastActiveRoomsToAll = async () => {
 
 export const createRoom = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { 
+      name, 
+      focusDuration = 25, 
+      shortBreakDuration = 5, 
+      longBreakDuration = 15 
+    } = req.body;
+    
     if (!name) return res.status(400).json({ message: 'Room name required' });
+    
+    // Validate timer durations (in minutes)
+    if (focusDuration < 1 || focusDuration > 180) {
+      return res.status(400).json({ message: 'Focus duration must be between 1 and 180 minutes' });
+    }
+    if (shortBreakDuration < 1 || shortBreakDuration > 60) {
+      return res.status(400).json({ message: 'Short break duration must be between 1 and 60 minutes' });
+    }
+    if (longBreakDuration < 1 || longBreakDuration > 180) {
+      return res.status(400).json({ message: 'Long break duration must be between 1 and 180 minutes' });
+    }
     
     // Check if room exists
     const existingRoom = await Room.findOne({ name });
@@ -65,10 +83,28 @@ export const createRoom = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     
-    // Create new room with user as host
+    // Convert minutes to seconds for storage
+    const focusSeconds = focusDuration * 60;
+    const shortBreakSeconds = shortBreakDuration * 60;
+    const longBreakSeconds = longBreakDuration * 60;
+    
+    // Create new room with user as host and custom timer settings
     const room = await Room.create({
       name,
       host: req.user.id,
+      timerSettings: {
+        focusDuration: focusSeconds,
+        shortBreakDuration: shortBreakSeconds,
+        longBreakDuration: longBreakSeconds
+      },
+      timerState: {
+        mode: 'focus',
+        timeRemaining: focusSeconds, // Initialize with focus duration
+        isRunning: false,
+        cycleCount: 0,
+        startedAt: null,
+        pausedAt: null
+      },
       users: [{
         userId: req.user.id,
         name: user.name,
@@ -86,7 +122,12 @@ export const createRoom = async (req, res) => {
       id: room._id,
       name: room.name,
       host: room.host,
-      userCount: room.users.length
+      userCount: room.users.length,
+      timerSettings: {
+        focusDuration: focusDuration,
+        shortBreakDuration: shortBreakDuration,
+        longBreakDuration: longBreakDuration
+      }
     });
     
     res.status(201).json(room);

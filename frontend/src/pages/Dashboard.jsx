@@ -35,8 +35,14 @@ const Dashboard = () => {
     filteredRooms,
     showCreateModal,
     newRoomName,
+    focusDuration,
+    shortBreakDuration,
+    longBreakDuration,
     setShowCreateModal,
     setNewRoomName,
+    setFocusDuration,
+    setShortBreakDuration,
+    setLongBreakDuration,
     handleSearchChange,
     handleCreateRoom,
     handleJoinRoom,
@@ -162,6 +168,12 @@ const Dashboard = () => {
           onSubmit={handleCreateRoom}
           roomName={newRoomName}
           onRoomNameChange={(e) => setNewRoomName(e.target.value)}
+          focusDuration={focusDuration}
+          shortBreakDuration={shortBreakDuration}
+          longBreakDuration={longBreakDuration}
+          onFocusDurationChange={(e) => setFocusDuration(parseInt(e.target.value) || 25)}
+          onShortBreakDurationChange={(e) => setShortBreakDuration(parseInt(e.target.value) || 5)}
+          onLongBreakDurationChange={(e) => setLongBreakDuration(parseInt(e.target.value) || 15)}
           isConnected={ablyConnected || socketConnected}
         />
       </div>

@@ -78,11 +78,11 @@ export const handleResetTimer = async (io, socket, { roomId }) => {
       return;
     }
     
-    // Update timer state based on current mode
+    // Update timer state based on current mode using room's custom settings
     const timeByMode = {
-      focus: 25 * 60,      // 25 minutes
-      shortBreak: 5 * 60,  // 5 minutes
-      longBreak: 15 * 60   // 15 minutes
+      focus: room.timerSettings?.focusDuration || 25 * 60,
+      shortBreak: room.timerSettings?.shortBreakDuration || 5 * 60,
+      longBreak: room.timerSettings?.longBreakDuration || 15 * 60
     };
     
     room.timerState.timeRemaining = timeByMode[room.timerState.mode] || timeByMode.focus;
@@ -122,16 +122,16 @@ export const handleChangeTimerMode = async (io, socket, { roomId, mode }) => {
       return;
     }
     
-    // Update timer state based on mode
+    // Update timer state based on mode using room's custom settings
     room.timerState.mode = mode;
     room.timerState.isRunning = false;
     room.timerState.startedAt = null;
     room.timerState.pausedAt = null;
     
     const timeByMode = {
-      focus: 25 * 60,      // 25 minutes
-      shortBreak: 5 * 60,  // 5 minutes
-      longBreak: 15 * 60   // 15 minutes
+      focus: room.timerSettings?.focusDuration || 25 * 60,
+      shortBreak: room.timerSettings?.shortBreakDuration || 5 * 60,
+      longBreak: room.timerSettings?.longBreakDuration || 15 * 60
     };
     
     room.timerState.timeRemaining = timeByMode[mode];

@@ -11,6 +11,26 @@ const roomSchema = new mongoose.Schema({
     ref: 'User', 
     required: true 
   },
+  timerSettings: {
+    focusDuration: {
+      type: Number,
+      default: 25 * 60, // 25 minutes in seconds
+      min: 1 * 60, // Minimum 1 minute
+      max: 180 * 60 // Maximum 3 hours
+    },
+    shortBreakDuration: {
+      type: Number,
+      default: 5 * 60, // 5 minutes in seconds
+      min: 1 * 60, // Minimum 1 minute
+      max: 60 * 60 // Maximum 1 hour
+    },
+    longBreakDuration: {
+      type: Number,
+      default: 15 * 60, // 15 minutes in seconds
+      min: 1 * 60, // Minimum 1 minute
+      max: 180 * 60 // Maximum 3 hours
+    }
+  },
   timerState: {
     mode: { 
       type: String, 
