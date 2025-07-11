@@ -1,5 +1,5 @@
 import Room from '../../models/Room.js';
-import { broadcastActiveRooms } from './roomHandler.js';
+import { broadcastActiveRooms, deleteRoomIfEmpty } from './roomHandler.js';
 
 export const handleDisconnect = async (io, socket, activeUsers) => {
   console.log('User disconnected:', socket.id);
@@ -15,21 +15,23 @@ export const handleDisconnect = async (io, socket, activeUsers) => {
         'users.socketId': socket.id
       });
       
+      const deletedRoomIds = new Set(); // Track deleted rooms to prevent duplicate processing
+      
       // Remove user from each room
       for (const room of rooms) {
+        // Skip if room was already deleted in a previous iteration
+        if (deletedRoomIds.has(room._id.toString())) {
+          continue;
+        }
+        
         room.users = room.users.filter(
           (u) => u.socketId !== socket.id
         );
         
-        // Check if room is now empty
-        if (room.users.length === 0) {
-          console.log(`[Disconnect] Room ${room.name} is empty, deleting it`);
-          await Room.findByIdAndDelete(room._id);
-          
-          // Notify that room was deleted
-          io.emit('room-deleted', { roomId: room._id, roomName: room.name });
-          
-          console.log(`[Disconnect] Deleted empty room: ${room.name}`);
+        // Check if room is now empty and delete if so
+        const wasDeleted = await deleteRoomIfEmpty(io, room);
+        if (wasDeleted) {
+          deletedRoomIds.add(room._id.toString());
           continue; // Skip further processing for deleted room
         }
         

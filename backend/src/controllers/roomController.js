@@ -2,7 +2,6 @@ import Room from '../models/Room.js';
 import User from '../models/User.js';
 import { getSocketInstance } from '../utils/socketInstance.js';
 import { broadcastActiveRooms } from '../socket/handlers/roomHandler.js';
-import { publishActiveRooms, publishRoomUpdate } from '../services/ablyService.js';
 
 // Helper function to format rooms for frontend
 const formatRoomsForFrontend = (rooms) => {
@@ -30,7 +29,7 @@ const formatRoomsForFrontend = (rooms) => {
   });
 };
 
-// Helper function to broadcast active rooms via both Socket.IO and Ably
+// Helper function to broadcast active rooms via Socket.IO
 const broadcastActiveRoomsToAll = async () => {
   try {
     // Get active rooms with populated user data
@@ -47,9 +46,6 @@ const broadcastActiveRoomsToAll = async () => {
     if (io) {
       broadcastActiveRooms(io);
     }
-    
-    // Publish via Ably (new functionality)
-    await publishActiveRooms(formattedRooms);
     
     return formattedRooms;
   } catch (error) {
@@ -122,19 +118,6 @@ export const createRoom = async (req, res) => {
     // Broadcast updated active rooms to all connected clients
     await broadcastActiveRoomsToAll();
     
-    // Publish room creation event
-    await publishRoomUpdate('room-created', {
-      id: room._id,
-      name: room.name,
-      host: room.host,
-      userCount: room.users.length,
-      timerSettings: {
-        focusDuration: focusDuration,
-        shortBreakDuration: shortBreakDuration,
-        longBreakDuration: longBreakDuration
-      }
-    });
-    
     res.status(201).json(room);
   } catch (err) {
     console.error('Error creating room:', err);
@@ -149,6 +132,68 @@ export const getRooms = async (req, res) => {
   } catch (err) {
     console.error('Error getting rooms:', err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Debug endpoint to get all rooms including empty ones
+export const getAllRoomsDebug = async (req, res) => {
+  try {
+    const allRooms = await Room.find().populate('host', 'name email');
+    const roomsInfo = allRooms.map(room => ({
+      id: room._id,
+      name: room.name,
+      host: room.host,
+      userCount: room.users.length,
+      createdAt: room.createdAt,
+      users: room.users.map(u => ({ 
+        userId: u.userId, 
+        name: u.name, 
+        socketId: u.socketId,
+        joinedAt: u.joinedAt 
+      }))
+    }));
+    
+    console.log(`[DEBUG] Total rooms in database: ${allRooms.length}`);
+    console.log('[DEBUG] Rooms details:', roomsInfo);
+    
+    res.json({
+      totalRooms: allRooms.length,
+      rooms: roomsInfo
+    });
+  } catch (err) {
+    console.error('Error getting all rooms for debug:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Cleanup endpoint to remove empty rooms
+export const cleanupEmptyRooms = async (req, res) => {
+  try {
+    const emptyRooms = await Room.find({ 
+      $or: [
+        { users: { $size: 0 } },
+        { users: { $exists: false } }
+      ]
+    });
+    
+    console.log(`[CLEANUP] Found ${emptyRooms.length} empty rooms to delete`);
+    
+    const deletedRooms = [];
+    for (const room of emptyRooms) {
+      console.log(`[CLEANUP] Deleting empty room: ${room.name} (${room._id})`);
+      await Room.findByIdAndDelete(room._id);
+      deletedRooms.push({ id: room._id, name: room.name });
+    }
+    
+    console.log(`[CLEANUP] Cleanup complete. Deleted ${deletedRooms.length} rooms`);
+    
+    res.json({
+      message: `Cleanup complete. Deleted ${deletedRooms.length} empty rooms.`,
+      deletedRooms: deletedRooms
+    });
+  } catch (err) {
+    console.error('Error during cleanup:', err);
+    res.status(500).json({ message: 'Server error during cleanup' });
   }
 };
 

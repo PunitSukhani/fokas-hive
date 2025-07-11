@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { createRoom as createRoomAPI } from '../services/roomService';
+import { createRoom as createRoomAPI, getActiveRooms } from '../services/roomService';
 import debounce from 'lodash.debounce';
 
 const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
@@ -68,8 +68,23 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
       return;
     }
     
-    // Generate a unique room name by appending timestamp if needed
     let roomName = newRoomName.trim();
+    
+    // Debug: Check existing rooms before creating
+    try {
+      const existingRooms = await getActiveRooms();
+      console.log('Existing rooms before creation:', existingRooms);
+      console.log('Attempting to create room with name:', roomName);
+      
+      // Check for exact name match (case sensitive)
+      const conflictingRoom = existingRooms.find(room => room.name === roomName);
+      if (conflictingRoom) {
+        console.log('Found conflicting room:', conflictingRoom);
+      }
+    } catch (debugError) {
+      console.warn('Could not fetch existing rooms for debug:', debugError);
+    }
+    
     const roomData = {
       name: roomName,
       focusDuration: focusDuration,
@@ -107,41 +122,23 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
       
     } catch (error) {
       console.error('Room creation error:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        roomName: roomName,
+        roomData: roomData
+      });
       
       // Handle specific error cases
       if (error.response?.status === 409) {
-        // Room name already exists - try with a timestamp
-        const timestamp = Date.now().toString().slice(-4);
-        const uniqueRoomName = `${roomName} (${timestamp})`;
-        
-        try {
-          const retryRoomData = { 
-            name: uniqueRoomName,
-            focusDuration: focusDuration,
-            shortBreakDuration: shortBreakDuration,
-            longBreakDuration: longBreakDuration
-          };
-          const createdRoom = await createRoomAPI(retryRoomData);
-          
-          toast.success(`Room "${createdRoom.name}" created successfully!`, {
-            toastId: 'room-created'
-          });
-          
-          setShowCreateModal(false);
-          setNewRoomName('');
-          // Reset timer durations to defaults
-          setFocusDuration(25);
-          setShortBreakDuration(5);
-          setLongBreakDuration(15);
-          navigate(`/room/${createdRoom._id}`);
-          return;
-        } catch (retryError) {
-          // If retry also fails, show original error
-          toast.error(`Room name "${roomName}" is already taken. Please choose a different name.`, { 
-            toastId: 'room-exists' 
-          });
-          return; 
-        }
+        // Room name already exists - ask user to choose a different name
+        const errorMessage = error.response?.data?.message || `Room name "${roomName}" is already taken. Please choose a different name.`;
+        toast.error(errorMessage, { 
+          toastId: 'room-exists' 
+        });
+        return;
       }
       
       // Fallback to Socket.IO if REST API fails

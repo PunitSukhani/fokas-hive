@@ -45,7 +45,6 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/room/:roomId" element={<RoomPage />} />
-              {/* Add more protected routes here */}
             </Route>
             
             {/* Catch-all Route */}

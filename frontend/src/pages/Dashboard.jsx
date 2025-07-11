@@ -78,6 +78,7 @@ const Dashboard = () => {
     if (!socket) return;
 
     let isMounted = true;
+    const recentlyDeletedRooms = new Set(); // Track recently deleted rooms to prevent duplicate notifications
 
     const handleRoomCreated = (roomData) => {
       if (isMounted) {
@@ -89,7 +90,22 @@ const Dashboard = () => {
 
     const handleRoomDeleted = (data) => {
       if (isMounted) {
-        toast.info(`Room "${data.roomName}" was deleted`);
+        // Prevent duplicate notifications for the same room within 5 seconds
+        const roomKey = `${data.roomId}-${data.roomName}`;
+        if (recentlyDeletedRooms.has(roomKey)) {
+          console.log('Duplicate room deletion notification prevented for:', data.roomName);
+          return;
+        }
+        
+        recentlyDeletedRooms.add(roomKey);
+        // Clean up after 5 seconds
+        setTimeout(() => {
+          recentlyDeletedRooms.delete(roomKey);
+        }, 5000);
+        
+        toast.info(`Room "${data.roomName}" was deleted`, {
+          toastId: `room-deleted-${data.roomId}` // Use unique toast ID to prevent duplicate toasts
+        });
         // Request updated rooms list
         socket.emit('get-active-rooms');
       }

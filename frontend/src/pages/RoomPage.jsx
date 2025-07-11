@@ -288,10 +288,6 @@ const RoomPage = () => {
                     {room.createdAt ? new Date(room.createdAt).toLocaleDateString() : 'Unknown'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Room ID:</span>
-                  <span className="text-slate-800 font-mono text-xs">{roomId}</span>
-                </div>
                 {room.timerSettings && (
                   <>
                     <div className="border-t pt-2 mt-3">

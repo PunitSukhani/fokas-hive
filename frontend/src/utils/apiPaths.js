@@ -22,16 +22,6 @@ const API_PATHS = {
     GET_ONE: (id) => `/rooms/${id}`,
     JOIN: (id) => `/rooms/${id}/join`,
   },
-
-  // These are placeholder paths that might be implemented in the future
-  // based on the project's evolution
-  MATERIALS: {
-    // To be implemented when material management features are added
-  },
-  
-  MESSAGES: {
-    // For future chat functionality within rooms
-  }
 };
 
 export default API_PATHS;

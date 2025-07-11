@@ -1,5 +1,20 @@
   import Room from '../../models/Room.js';
-import { publishActiveRooms, publishUserPresence } from '../../services/ablyService.js';
+
+// Helper function to handle room deletion when empty (prevents duplicate notifications)
+export const deleteRoomIfEmpty = async (io, room) => {
+  if (!room || room.users.length > 0) {
+    return false; // Room not deleted
+  }
+  
+  console.log(`[Socket] Room ${room.name} is empty, deleting it`);
+  await Room.findByIdAndDelete(room._id);
+  
+  // Notify that room was deleted
+  io.emit('room-deleted', { roomId: room._id, roomName: room.name });
+  
+  console.log(`[Socket] Deleted empty room: ${room.name}`);
+  return true; // Room was deleted
+};
 
 // Helper function to format rooms for frontend
 const formatRoomsForFrontend = (rooms) => {
@@ -131,16 +146,8 @@ export const handleJoinRoom = async (io, socket, { roomId }) => {
       name: socket.user.name
     });
     
-    // Broadcast updated active rooms to all clients via both Socket.IO and Ably
+    // Broadcast updated active rooms to all clients
     await broadcastActiveRooms(io);
-    
-    // Publish user presence via Ably
-    await publishUserPresence('user-joined', {
-      roomId: roomId,
-      userId: socket.user.id,
-      userName: socket.user.name,
-      roomName: room.name
-    });
     
   } catch (error) {
     console.error('Error joining room:', error);
@@ -159,25 +166,11 @@ export const handleLeaveRoom = async (io, socket, { roomId }) => {
       (u) => u.userId.toString() !== socket.user.id.toString()
     );
     
-    // Check if room is now empty
-    if (room.users.length === 0) {
-      console.log(`[Socket] Room ${room.name} is empty, deleting it`);
-      await Room.findByIdAndDelete(roomId);
-      
-      // Notify that room was deleted
-      io.emit('room-deleted', { roomId, roomName: room.name });
-      
+    // Check if room is now empty and delete if so
+    const wasDeleted = await deleteRoomIfEmpty(io, room);
+    if (wasDeleted) {
       // Broadcast updated active rooms to all clients
       await broadcastActiveRooms(io);
-      
-      // Publish user presence via Ably
-      await publishUserPresence('user-left', {
-        roomId: roomId,
-        userId: socket.user.id,
-        userName: socket.user.name,
-        roomName: room.name
-      });
-      
       return;
     }
     
@@ -217,14 +210,6 @@ export const handleLeaveRoom = async (io, socket, { roomId }) => {
     // Broadcast updated active rooms to all clients
     await broadcastActiveRooms(io);
     
-    // Publish user presence via Ably
-    await publishUserPresence('user-left', {
-      roomId: roomId,
-      userId: socket.user.id,
-      userName: socket.user.name,
-      roomName: room.name
-    });
-    
   } catch (error) {
     console.error('Error leaving room:', error);
   }
@@ -263,9 +248,6 @@ export const broadcastActiveRooms = async (io) => {
     // Broadcast via Socket.IO
     io.emit('active-rooms', formattedRooms);
     console.log(`[Socket] Broadcasted ${formattedRooms.length} active rooms to all clients`);
-    
-    // Publish via Ably
-    await publishActiveRooms(formattedRooms);
     
   } catch (error) {
     console.error('Error broadcasting active rooms:', error);

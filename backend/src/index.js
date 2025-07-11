@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.js';
 import roomRoutes from './routes/roomRoutes.js';
 import setupSocketHandlers from './socket/socketHandlers.js';
 import { setSocketInstance } from './utils/socketInstance.js';
+import Room from './models/Room.js';
 
 dotenv.config();
 
@@ -87,6 +88,45 @@ setupSocketHandlers(io);
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('MongoDB connected');
+    
+    // Setup automatic cleanup of empty rooms every 15 minutes
+    const cleanupInterval = setInterval(async () => {
+      try {
+        const emptyRooms = await Room.find({ 
+          $or: [
+            { users: { $size: 0 } },
+            { users: { $exists: false } }
+          ]
+        });
+        
+        if (emptyRooms.length > 0) {
+          console.log(`[AUTO-CLEANUP] Found ${emptyRooms.length} empty rooms to delete`);
+          
+          for (const room of emptyRooms) {
+            console.log(`[AUTO-CLEANUP] Deleting empty room: ${room.name} (${room._id})`);
+            await Room.findByIdAndDelete(room._id);
+          }
+          
+          console.log(`[AUTO-CLEANUP] Deleted ${emptyRooms.length} empty rooms`);
+        }
+      } catch (error) {
+        console.error('[AUTO-CLEANUP] Error during automatic cleanup:', error);
+      }
+    }, 15 * 60 * 1000); // Run every 15 minutes
+    
+    // Cleanup interval reference for graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      clearInterval(cleanupInterval);
+      process.exit(0);
+    });
+    
+    process.on('SIGINT', () => {
+      console.log('SIGINT received, shutting down gracefully');
+      clearInterval(cleanupInterval);
+      process.exit(0);
+    });
+    
     const PORT = process.env.PORT || 5000; // Using port 5000
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
