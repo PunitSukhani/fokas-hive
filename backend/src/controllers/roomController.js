@@ -6,23 +6,28 @@ import { publishActiveRooms, publishRoomUpdate } from '../services/ablyService.j
 
 // Helper function to format rooms for frontend
 const formatRoomsForFrontend = (rooms) => {
-  return rooms.map(room => ({
-    id: room._id,
-    _id: room._id,
-    name: room.name,
-    host: room.host,
-    userCount: room.users.length,
-    users: room.users.map(user => ({
-      id: user.userId?._id || user.userId,
-      _id: user.userId?._id || user.userId,
-      name: user.userId?.name || user.name,
-      email: user.userId?.email,
-      joinedAt: user.joinedAt
-    })),
-    timerState: room.timerState,
-    timerSettings: room.timerSettings,
-    createdAt: room.createdAt
-  }));
+  return rooms.map(room => {
+    // Calculate current timer state if timer is running
+    const currentTimerState = calculateCurrentTimerState(room.timerState);
+    
+    return {
+      id: room._id,
+      _id: room._id,
+      name: room.name,
+      host: room.host,
+      userCount: room.users.length,
+      users: room.users.map(user => ({
+        id: user.userId?._id || user.userId,
+        _id: user.userId?._id || user.userId,
+        name: user.userId?.name || user.name,
+        email: user.userId?.email,
+        joinedAt: user.joinedAt
+      })),
+      timerState: currentTimerState,
+      timerSettings: room.timerSettings,
+      createdAt: room.createdAt
+    };
+  });
 };
 
 // Helper function to broadcast active rooms via both Socket.IO and Ably
@@ -147,6 +152,23 @@ export const getRooms = async (req, res) => {
   }
 };
 
+// Helper function to calculate current timer state
+const calculateCurrentTimerState = (timerState) => {
+  if (!timerState.isRunning || !timerState.startedAt) {
+    return timerState;
+  }
+  
+  const now = new Date();
+  const startedAt = new Date(timerState.startedAt);
+  const elapsedSeconds = Math.floor((now - startedAt) / 1000);
+  const currentTimeRemaining = Math.max(0, timerState.timeRemaining - elapsedSeconds);
+  
+  return {
+    ...timerState,
+    timeRemaining: currentTimeRemaining
+  };
+};
+
 export const getRoom = async (req, res) => {
   try {
     const room = await Room.findById(req.params.id)
@@ -155,9 +177,13 @@ export const getRoom = async (req, res) => {
     
     if (!room) return res.status(404).json({ message: 'Room not found' });
     
+    // Calculate current timer state if timer is running
+    const currentTimerState = calculateCurrentTimerState(room.timerState);
+    
     // Format the response to include user details properly
     const formattedRoom = {
       ...room.toObject(),
+      timerState: currentTimerState,
       users: room.users.map(user => ({
         id: user.userId?._id || user.userId,
         _id: user.userId?._id || user.userId,
@@ -185,7 +211,30 @@ export const joinRoom = async (req, res) => {
     
     // Check if user is already in room
     const isInRoom = room.users.some(user => user.userId.toString() === userId);
-    if (isInRoom) return res.json(room); // User already in room
+    if (isInRoom) {
+      // User already in room, populate and return
+      await room.populate('host', 'name email');
+      await room.populate('users.userId', 'name email');
+      
+      // Calculate current timer state if timer is running
+      const currentTimerState = calculateCurrentTimerState(room.timerState);
+      
+      // Format the response to include user details properly
+      const formattedRoom = {
+        ...room.toObject(),
+        timerState: currentTimerState,
+        users: room.users.map(user => ({
+          id: user.userId?._id || user.userId,
+          _id: user.userId?._id || user.userId,
+          name: user.userId?.name || user.name,
+          email: user.userId?.email,
+          joinedAt: user.joinedAt,
+          socketId: user.socketId
+        }))
+      };
+      
+      return res.json(formattedRoom);
+    }
     
     // Get user info
     const user = await User.findById(userId);
@@ -199,10 +248,31 @@ export const joinRoom = async (req, res) => {
     
     await room.save();
     
+    // Populate user data for consistent response
+    await room.populate('host', 'name email');
+    await room.populate('users.userId', 'name email');
+    
+    // Calculate current timer state if timer is running
+    const currentTimerState = calculateCurrentTimerState(room.timerState);
+    
+    // Format the response to include user details properly
+    const formattedRoom = {
+      ...room.toObject(),
+      timerState: currentTimerState,
+      users: room.users.map(user => ({
+        id: user.userId?._id || user.userId,
+        _id: user.userId?._id || user.userId,
+        name: user.userId?.name || user.name,
+        email: user.userId?.email,
+        joinedAt: user.joinedAt,
+        socketId: user.socketId
+      }))
+    };
+    
     // Broadcast updated active rooms to all connected clients
     await broadcastActiveRoomsToAll();
     
-    res.json(room);
+    res.json(formattedRoom);
   } catch (err) {
     console.error('Error joining room:', err);
     res.status(500).json({ message: 'Server error' });

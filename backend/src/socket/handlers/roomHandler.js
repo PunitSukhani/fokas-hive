@@ -3,23 +3,45 @@ import { publishActiveRooms, publishUserPresence } from '../../services/ablyServ
 
 // Helper function to format rooms for frontend
 const formatRoomsForFrontend = (rooms) => {
-  return rooms.map(room => ({
-    id: room._id,
-    _id: room._id,
-    name: room.name,
-    host: room.host,
-    userCount: room.users.length,
-    users: room.users.map(user => ({
-      id: user.userId?._id || user.userId,
-      _id: user.userId?._id || user.userId,
-      name: user.userId?.name || user.name,
-      email: user.userId?.email,
-      joinedAt: user.joinedAt
-    })),
-    timerState: room.timerState,
-    timerSettings: room.timerSettings,
-    createdAt: room.createdAt
-  }));
+  return rooms.map(room => {
+    // Calculate current timer state if timer is running
+    const currentTimerState = calculateCurrentTimerState(room.timerState);
+    
+    return {
+      id: room._id,
+      _id: room._id,
+      name: room.name,
+      host: room.host,
+      userCount: room.users.length,
+      users: room.users.map(user => ({
+        id: user.userId?._id || user.userId,
+        _id: user.userId?._id || user.userId,
+        name: user.userId?.name || user.name,
+        email: user.userId?.email,
+        joinedAt: user.joinedAt
+      })),
+      timerState: currentTimerState,
+      timerSettings: room.timerSettings,
+      createdAt: room.createdAt
+    };
+  });
+};
+
+// Helper function to calculate current timer state
+const calculateCurrentTimerState = (timerState) => {
+  if (!timerState.isRunning || !timerState.startedAt) {
+    return timerState;
+  }
+  
+  const now = new Date();
+  const startedAt = new Date(timerState.startedAt);
+  const elapsedSeconds = Math.floor((now - startedAt) / 1000);
+  const currentTimeRemaining = Math.max(0, timerState.timeRemaining - elapsedSeconds);
+  
+  return {
+    ...timerState,
+    timeRemaining: currentTimeRemaining
+  };
 };
 
 export const handleJoinRoom = async (io, socket, { roomId }) => {
@@ -34,7 +56,7 @@ export const handleJoinRoom = async (io, socket, { roomId }) => {
       return;
     }
     
-    console.log(`[Socket] Room found: ${room.name}`);
+    console.log(`[Socket] Room found: ${room.name}, current users: ${room.users.length}`);
 
     // Add user to room
     const userIndex = room.users.findIndex(
@@ -56,12 +78,13 @@ export const handleJoinRoom = async (io, socket, { roomId }) => {
       // Update socket ID if already in room
       console.log(`[Socket] Updating socket ID for user: ${socket.user.name}`);
       room.users[userIndex].socketId = socket.id;
+      room.users[userIndex].name = socket.user.name; // Update name in case it changed
     }
     
     await room.save();
     console.log(`[Socket] Room saved with updated users`);
     
-    // Join socket room
+    // Join socket room FIRST before broadcasting events
     socket.join(roomId);
     console.log(`[Socket] Socket joined room: ${roomId}`);
     
@@ -73,14 +96,31 @@ export const handleJoinRoom = async (io, socket, { roomId }) => {
       joinedAt: user.joinedAt,
       socketId: user.socketId
     }));
-    io.to(roomId).emit('user-list-updated', formattedUsers);
-    console.log(`[Socket] Emitted user-list-updated event with formatted users`);
+    
+    // Remove any duplicates based on user ID before broadcasting
+    const uniqueUsers = [];
+    const seenUserIds = new Set();
+    formattedUsers.forEach(user => {
+      const userId = user.id || user._id;
+      if (userId && !seenUserIds.has(userId.toString())) {
+        seenUserIds.add(userId.toString());
+        uniqueUsers.push(user);
+      }
+    });
+    
+    io.to(roomId).emit('user-list-updated', uniqueUsers);
+    console.log(`[Socket] Emitted user-list-updated event with ${uniqueUsers.length} unique users`);
     
     // Send room data to user (populate host data)
     await room.populate('host', 'name email');
+    
+    // Calculate current timer state if timer is running
+    const currentTimerState = calculateCurrentTimerState(room.timerState);
+    
     const formattedRoom = {
       ...room.toObject(),
-      users: formattedUsers
+      timerState: currentTimerState,
+      users: uniqueUsers
     };
     socket.emit('room-joined', formattedRoom);
     console.log(`[Socket] Emitted room-joined event to socket ${socket.id}`);
@@ -154,7 +194,19 @@ export const handleLeaveRoom = async (io, socket, { roomId }) => {
       joinedAt: user.joinedAt,
       socketId: user.socketId
     }));
-    io.to(roomId).emit('user-list-updated', formattedUsers);
+    
+    // Remove any duplicates based on user ID before broadcasting
+    const uniqueUsers = [];
+    const seenUserIds = new Set();
+    formattedUsers.forEach(user => {
+      const userId = user.id || user._id;
+      if (userId && !seenUserIds.has(userId.toString())) {
+        seenUserIds.add(userId.toString());
+        uniqueUsers.push(user);
+      }
+    });
+    
+    io.to(roomId).emit('user-list-updated', uniqueUsers);
     
     // Notify others that user left
     socket.to(roomId).emit('user-left', {

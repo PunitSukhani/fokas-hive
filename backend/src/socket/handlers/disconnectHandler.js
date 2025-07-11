@@ -43,7 +43,19 @@ export const handleDisconnect = async (io, socket, activeUsers) => {
           joinedAt: user.joinedAt,
           socketId: user.socketId
         }));
-        io.to(room._id.toString()).emit('user-list-updated', formattedUsers);
+        
+        // Remove any duplicates based on user ID before broadcasting
+        const uniqueUsers = [];
+        const seenUserIds = new Set();
+        formattedUsers.forEach(user => {
+          const userId = user.id || user._id;
+          if (userId && !seenUserIds.has(userId.toString())) {
+            seenUserIds.add(userId.toString());
+            uniqueUsers.push(user);
+          }
+        });
+        
+        io.to(room._id.toString()).emit('user-list-updated', uniqueUsers);
         
         // Notify others that user left
         io.to(room._id.toString()).emit('user-left', {

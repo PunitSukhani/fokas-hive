@@ -1,33 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import useSocket from '../hooks/useSocket';
-import { useActiveRooms, useUserPresence } from '../hooks/useAbly';
 import useRoomOperations from '../hooks/useRoomOperations';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import SearchAndCreateBar from '../components/dashboard/SearchAndCreateBar';
 import RoomList from '../components/dashboard/RoomList';
 import CreateRoomModal from '../components/dashboard/CreateRoomModal';
-import SessionInfo from '../components/debug/SessionInfo';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // Server URL configuration - could be moved to .env file
 const SOCKET_SERVER_URL = 'http://localhost:5000';
 
 const Dashboard = () => {
-  // Socket hook for compatibility with existing room operations
+  // Socket hook for real-time communication
   const { socket, isConnected: socketConnected, connectionError, reconnect } = useSocket(SOCKET_SERVER_URL);
   
-  // Ably hooks for real-time active rooms
-  const { 
-    activeRooms, 
-    loading: ablyLoading, 
-    error: ablyError, 
-    isConnected: ablyConnected,
-    refetch: refetchRooms
-  } = useActiveRooms();
-  
-  // User presence for additional context
-  const { userPresence } = useUserPresence();
+  // State for active rooms (now via Socket.IO)
+  const [activeRooms, setActiveRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Room operations hook (updated to work with both Socket.IO and REST API)
   const {
@@ -49,22 +40,40 @@ const Dashboard = () => {
     updateActiveRooms
   } = useRoomOperations(socket, socketConnected, activeRooms);
 
-  // Loading and error states
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Update loading and error states based on Ably
+  // Fetch active rooms via Socket.IO
   useEffect(() => {
-    setLoading(ablyLoading);
-    setError(ablyError);
-  }, [ablyLoading, ablyError]);
+    if (!socket || !socketConnected) return;
+
+    const handleActiveRooms = (rooms) => {
+      setActiveRooms(rooms || []);
+      setLoading(false);
+      setError(null);
+    };
+
+    const handleRoomError = (errorData) => {
+      setError(errorData.message || 'Failed to load rooms');
+      setLoading(false);
+    };
+
+    // Listen for active rooms updates
+    socket.on('active-rooms', handleActiveRooms);
+    socket.on('error', handleRoomError);
+
+    // Request initial active rooms
+    socket.emit('get-active-rooms');
+
+    return () => {
+      socket.off('active-rooms', handleActiveRooms);
+      socket.off('error', handleRoomError);
+    };
+  }, [socket, socketConnected]);
 
   // Update filtered rooms when active rooms change
   useEffect(() => {
     updateActiveRooms(activeRooms);
   }, [activeRooms, updateActiveRooms]);
 
-  // Setup socket event listeners for room creation (fallback)
+  // Setup socket event listeners for room creation
   useEffect(() => {
     if (!socket) return;
 
@@ -73,36 +82,46 @@ const Dashboard = () => {
     const handleRoomCreated = (roomData) => {
       if (isMounted) {
         toast.success(`Room "${roomData.name || 'New Room'}" created successfully!`);
-        // Refetch rooms to get updated list
-        refetchRooms();
+        // Request updated rooms list
+        socket.emit('get-active-rooms');
+      }
+    };
+
+    const handleRoomDeleted = (data) => {
+      if (isMounted) {
+        toast.info(`Room "${data.roomName}" was deleted`);
+        // Request updated rooms list
+        socket.emit('get-active-rooms');
       }
     };
 
     // Setup socket event listeners
     socket.on('room-created', handleRoomCreated);
+    socket.on('room-deleted', handleRoomDeleted);
 
     // Cleanup function
     return () => {
       isMounted = false;
       socket.off('room-created', handleRoomCreated);
+      socket.off('room-deleted', handleRoomDeleted);
     };
-  }, [socket, refetchRooms]);
+  }, [socket]);
 
   // Handle connection errors and initial loading state
   useEffect(() => {
-    if (connectionError && !ablyConnected) {
-      console.error('Both Socket.IO and Ably connection failed:', connectionError);
+    if (connectionError && !socketConnected) {
+      console.error('Socket.IO connection failed:', connectionError);
       setError('Failed to connect to server. Please try again later.');
       setLoading(false);
-    } else if (ablyConnected || socketConnected) {
-      // If either connection is working, clear errors
+    } else if (socketConnected) {
+      // If connection is working, clear errors
       setError(null);
     }
-  }, [connectionError, ablyConnected, socketConnected]);
+  }, [connectionError, socketConnected]);
 
   // Function to retry connection
   const retryConnection = () => {
-    console.log('Retrying connections...');
+    console.log('Retrying connection...');
     setLoading(true);
     setError(null);
     
@@ -112,7 +131,13 @@ const Dashboard = () => {
     });
     
     reconnect(); // Retry Socket.IO
-    refetchRooms(); // Retry Ably/REST
+    
+    // Request active rooms again after reconnection
+    setTimeout(() => {
+      if (socket && socket.connected) {
+        socket.emit('get-active-rooms');
+      }
+    }, 1000);
   };
 
   return (
@@ -124,14 +149,9 @@ const Dashboard = () => {
           {/* Connection Status Indicator */}
           <div className="mb-4 flex gap-2 text-sm">
             <div className={`px-2 py-1 rounded text-xs ${
-              ablyConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              socketConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
             }`}>
-              Ably: {ablyConnected ? 'Connected' : 'Disconnected'}
-            </div>
-            <div className={`px-2 py-1 rounded text-xs ${
-              socketConnected ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-            }`}>
-              Socket.IO: {socketConnected ? 'Connected' : 'Fallback'}
+              Socket.IO: {socketConnected ? 'Connected' : 'Disconnected'}
             </div>
           </div>
 
@@ -139,7 +159,7 @@ const Dashboard = () => {
             searchTerm={searchTerm}
             onSearchChange={handleSearchChange}
             onCreateRoom={() => setShowCreateModal(true)}
-            isConnected={ablyConnected || socketConnected}
+            isConnected={socketConnected}
           />
           
           <div className="mt-8">
@@ -150,16 +170,9 @@ const Dashboard = () => {
               onJoinRoom={handleJoinRoom}
               onCreateRoom={() => setShowCreateModal(true)}
               onRetryConnection={retryConnection}
-              userPresence={userPresence}
+              userPresence={{}}
             />
           </div>
-          
-          {/* Session Debug Info - Remove in production */}
-          {process.env.NODE_ENV !== 'production' && (
-            <div className="mt-8">
-              <SessionInfo />
-            </div>
-          )}
         </div>
         
         <CreateRoomModal 
@@ -174,7 +187,7 @@ const Dashboard = () => {
           onFocusDurationChange={(e) => setFocusDuration(parseInt(e.target.value) || 25)}
           onShortBreakDurationChange={(e) => setShortBreakDuration(parseInt(e.target.value) || 5)}
           onLongBreakDurationChange={(e) => setLongBreakDuration(parseInt(e.target.value) || 15)}
-          isConnected={ablyConnected || socketConnected}
+          isConnected={socketConnected}
         />
       </div>
     </ErrorBoundary>

@@ -11,10 +11,7 @@ import { apiCall } from "../utils/apiUtils";
  */
 export const login = async (email, password) => {
   try {
-    console.log('Attempting login for:', email);
     const result = await axiosInstance.post(API_PATHS.AUTH.LOGIN, { email, password });
-    
-    console.log('Login response:', result);
     
     // The backend sets the cookie automatically
     // Check if we have user data in the response

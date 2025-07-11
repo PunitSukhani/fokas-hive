@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { getRoomDetails, joinRoom } from '../services/roomService';
 import useSocket from '../hooks/useSocket';
 import useTimer from '../hooks/useTimer';
+import useChat from '../hooks/useChat';
 import Timer from '../components/room/Timer';
+import Chat from '../components/chat/Chat';
 import { HiArrowLeft, HiUsers } from 'react-icons/hi';
 
 const RoomPage = () => {
@@ -20,16 +22,21 @@ const RoomPage = () => {
   // Socket connection for real-time updates
   const { socket, isConnected } = useSocket('http://localhost:5000');
 
-  // Check if current user is the host
-  const isHost = room?.host && (
-    currentUser?.id === room.host.id || 
-    currentUser?.id === room.host._id ||
-    currentUser?._id === room.host.id ||
-    currentUser?._id === room.host._id
-  );
+  // Check if current user is the host - simplified and more robust
+  const isHost = useMemo(() => {
+    if (!room?.host || !currentUser) return false;
+    
+    const hostId = room.host.id || room.host._id;
+    const userId = currentUser.id || currentUser._id;
+    
+    return hostId === userId;
+  }, [room?.host, currentUser]);
 
   // Timer functionality
   const timerHook = useTimer(socket, roomId, room?.timerState, isHost, room?.timerSettings);
+
+  // Chat functionality
+  const chatHook = useChat(socket, roomId, isConnected);
 
   // Fetch room details and join the room
   useEffect(() => {
@@ -43,8 +50,8 @@ const RoomPage = () => {
         // Join the room via REST API first, then join socket room
         if (roomData && currentUser) {
           try {
-            await joinRoom(roomId);
-            console.log('Successfully joined room via REST API');
+            const updatedRoom = await joinRoom(roomId);
+            setRoom(updatedRoom); // Update with the room data that includes the user
           } catch (joinError) {
             console.warn('Failed to join room via REST API:', joinError);
           }
@@ -67,44 +74,56 @@ const RoomPage = () => {
   useEffect(() => {
     if (!socket || !isConnected || !roomId || !currentUser) return;
     
-    console.log('Setting up socket listeners for room:', roomId);
+    console.log('[RoomPage] Setting up socket listeners for room:', roomId);
     
-    // Join the socket room
-    socket.emit('join-room', { roomId });
+    // Small delay to ensure REST API join completes first
+    const timeoutId = setTimeout(() => {
+      // Join the socket room
+      socket.emit('join-room', { roomId });
+    }, 100);
     
     // Listen for user list updates
     const handleUserListUpdated = (users) => {
-      console.log('User list updated:', users);
+      console.log('[RoomPage] Received user-list-updated:', users);
       setRoom(prevRoom => {
         if (!prevRoom) return prevRoom;
+        
+        // Deduplicate users by ID to prevent multiple instances
+        const uniqueUsers = [];
+        const seenUserIds = new Set();
+        
+        users.forEach(user => {
+          const userId = user.id || user._id;
+          if (userId && !seenUserIds.has(userId)) {
+            seenUserIds.add(userId);
+            uniqueUsers.push(user);
+          }
+        });
+        
         return {
           ...prevRoom,
-          users: users // Backend now sends properly formatted user data
+          users: uniqueUsers
         };
       });
     };
     
     // Listen for user joined
     const handleUserJoined = (userData) => {
-      console.log('User joined room:', userData);
-      toast.info(`${userData.name} joined the room`);
+      // Note: Chat system will handle join notifications
     };
     
     // Listen for user left
     const handleUserLeft = (userData) => {
-      console.log('User left room:', userData);
-      toast.info(`${userData.name} left the room`);
+      // Note: Chat system will handle leave notifications
     };
     
     // Listen for room updates
     const handleRoomJoined = (roomData) => {
-      console.log('Room joined event received:', roomData);
       setRoom(roomData);
     };
 
     // Listen for timer events
     const handleTimerUpdate = (timerState) => {
-      console.log('Timer state updated:', timerState);
       setRoom(prevRoom => {
         if (!prevRoom) return prevRoom;
         return {
@@ -128,7 +147,7 @@ const RoomPage = () => {
     
     // Cleanup
     return () => {
-      console.log('Cleaning up socket listeners for room:', roomId);
+      clearTimeout(timeoutId);
       socket.off('user-list-updated', handleUserListUpdated);
       socket.off('user-joined', handleUserJoined);
       socket.off('user-left', handleUserLeft);
@@ -141,7 +160,7 @@ const RoomPage = () => {
       // Leave the socket room when component unmounts or roomId changes
       socket.emit('leave-room', { roomId });
     };
-  }, [socket, isConnected, roomId, currentUser]);
+  }, [socket, isConnected, roomId, currentUser]); // Removed room dependency to fix real-time updates
 
   const handleBackToDashboard = () => {
     // Leave the room before navigating away
@@ -210,16 +229,19 @@ const RoomPage = () => {
               onReset={timerHook.resetTimer}
               onModeChange={timerHook.changeMode}
               canControl={timerHook.canControl}
+              room={room}
               className="mb-6"
             />
 
-            {/* Chat Section - Placeholder */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-50 p-8">
-              <h2 className="text-xl font-bold text-slate-800 mb-6">Chat</h2>
-              <div className="bg-gray-50 rounded-lg p-6 text-center text-slate-500">
-                Chat functionality coming soon...
-              </div>
-            </div>
+            {/* Chat Section */}
+            <Chat
+              messages={chatHook.messages}
+              onSendMessage={chatHook.sendMessage}
+              currentUserId={currentUser?.id || currentUser?._id}
+              hostId={room.host?.id || room.host?._id}
+              isConnected={isConnected}
+              loading={chatHook.loading}
+            />
           </div>
 
           {/* Sidebar */}
@@ -232,19 +254,25 @@ const RoomPage = () => {
               </h3>
               
               <div className="space-y-3">
-                {room.users?.map((user, index) => (
-                  <div key={`room-${roomId}-user-${user.id || user._id || index}`} className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                      {user.name?.charAt(0).toUpperCase() || 'U'}
+                {room.users?.map((user, index) => {
+                  const userId = user.id || user._id;
+                  const hostId = room.host?.id || room.host?._id;
+                  const isUserHost = userId === hostId;
+                  
+                  return (
+                    <div key={`user-${userId || index}-${roomId}`} className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                        {user.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-800">{user.name || 'Unknown User'}</p>
+                        <p className="text-xs text-slate-500">
+                          {isUserHost && '👑 Host'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-800">{user.name || 'Unknown User'}</p>
-                      <p className="text-xs text-slate-500">
-                        {(user.id === room.host?.id || user.id === room.host?._id || user._id === room.host?.id || user._id === room.host?._id) && '👑 Host'}
-                      </p>
-                    </div>
-                  </div>
-                )) || (
+                  );
+                }) || (
                   <p className="text-slate-500 text-center">No members found</p>
                 )}
               </div>

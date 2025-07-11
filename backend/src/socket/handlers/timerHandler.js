@@ -1,5 +1,22 @@
 import Room from '../../models/Room.js';
 
+// Helper function to calculate current timer state
+const calculateCurrentTimerState = (timerState) => {
+  if (!timerState.isRunning || !timerState.startedAt) {
+    return timerState;
+  }
+  
+  const now = new Date();
+  const startedAt = new Date(timerState.startedAt);
+  const elapsedSeconds = Math.floor((now - startedAt) / 1000);
+  const currentTimeRemaining = Math.max(0, timerState.timeRemaining - elapsedSeconds);
+  
+  return {
+    ...timerState,
+    timeRemaining: currentTimeRemaining
+  };
+};
+
 // Helper to check if user is the host
 const isUserHost = (room, userId) => {
   return room.host.toString() === userId.toString();
@@ -48,10 +65,18 @@ export const handlePauseTimer = async (io, socket, { roomId, timeRemaining }) =>
       return;
     }
     
+    // Calculate current time remaining if timer was running
+    let currentTimeRemaining = timeRemaining;
+    if (room.timerState.isRunning && room.timerState.startedAt) {
+      const currentTimerState = calculateCurrentTimerState(room.timerState);
+      currentTimeRemaining = Math.min(currentTimeRemaining || room.timerState.timeRemaining, currentTimerState.timeRemaining);
+    }
+    
     // Update timer state
     room.timerState.isRunning = false;
-    room.timerState.timeRemaining = Math.max(0, timeRemaining || room.timerState.timeRemaining);
+    room.timerState.timeRemaining = Math.max(0, currentTimeRemaining);
     room.timerState.pausedAt = new Date();
+    room.timerState.startedAt = null; // Clear startedAt when paused
     await room.save();
     
     console.log(`[Timer] Paused timer for room ${roomId} - Time remaining: ${room.timerState.timeRemaining}s`);
