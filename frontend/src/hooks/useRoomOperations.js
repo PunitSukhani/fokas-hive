@@ -54,16 +54,20 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
       return;
     }
     
-    // Validate timer durations
-    if (focusDuration < 1 || focusDuration > 180) {
+    // Validate timer durations - use defaults if empty
+    const finalFocusDuration = focusDuration === '' ? 25 : focusDuration;
+    const finalShortBreakDuration = shortBreakDuration === '' ? 5 : shortBreakDuration;
+    const finalLongBreakDuration = longBreakDuration === '' ? 15 : longBreakDuration;
+    
+    if (finalFocusDuration < 1 || finalFocusDuration > 180) {
       toast.error('Focus duration must be between 1 and 180 minutes', { toastId: 'invalid-focus' });
       return;
     }
-    if (shortBreakDuration < 1 || shortBreakDuration > 60) {
+    if (finalShortBreakDuration < 1 || finalShortBreakDuration > 60) {
       toast.error('Short break duration must be between 1 and 60 minutes', { toastId: 'invalid-short-break' });
       return;
     }
-    if (longBreakDuration < 1 || longBreakDuration > 180) {
+    if (finalLongBreakDuration < 1 || finalLongBreakDuration > 180) {
       toast.error('Long break duration must be between 1 and 180 minutes', { toastId: 'invalid-long-break' });
       return;
     }
@@ -87,9 +91,9 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
     
     const roomData = {
       name: roomName,
-      focusDuration: focusDuration,
-      shortBreakDuration: shortBreakDuration,
-      longBreakDuration: longBreakDuration
+      focusDuration: finalFocusDuration,
+      shortBreakDuration: finalShortBreakDuration,
+      longBreakDuration: finalLongBreakDuration
     };
     
     try {

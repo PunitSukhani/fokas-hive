@@ -8,7 +8,7 @@ import useTimer from '../hooks/useTimer';
 import useChat from '../hooks/useChat';
 import Timer from '../components/room/Timer';
 import Chat from '../components/chat/Chat';
-import { HiArrowLeft, HiUsers } from 'react-icons/hi';
+import { HiArrowLeft, HiUsers, HiChevronDown, HiChevronUp } from 'react-icons/hi';
 
 const RoomPage = () => {
   const { roomId } = useParams();
@@ -18,6 +18,7 @@ const RoomPage = () => {
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [membersCollapsed, setMembersCollapsed] = useState(true); // Start collapsed on mobile
   
   // Socket connection for real-time updates
   const { socket, isConnected } = useSocket('http://localhost:5000');
@@ -198,9 +199,9 @@ const RoomPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-white">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <button
               onClick={handleBackToDashboard}
@@ -209,109 +210,143 @@ const RoomPage = () => {
               <HiArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-800">{room.name}</h1>
-              <p className="text-slate-500">
+              <h1 className="text-2xl font-bold text-slate-800">{room.name}</h1>
+              <p className="text-slate-500 text-sm">
                 Host: {room.host?.name || 'Unknown'} • {room.users?.length || 0} members
               </p>
             </div>
           </div>
+          
+          {/* Compact Members Display */}
+          <div className="hidden md:flex items-center gap-2">
+            <div className="flex -space-x-2">
+              {room.users?.slice(0, 4).map((user, index) => {
+                const userId = user.id || user._id;
+                const hostId = room.host?.id || room.host?._id;
+                const isUserHost = userId === hostId;
+                
+                return (
+                  <div 
+                    key={`header-user-${userId || index}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white border-2 border-white ${
+                      isUserHost ? 'bg-blue-500' : 'bg-gray-500'
+                    }`}
+                    title={`${user.name || 'Unknown User'}${isUserHost ? ' (Host)' : ''}`}
+                  >
+                    {user.name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                );
+              })}
+              {room.users?.length > 4 && (
+                <div className="w-8 h-8 rounded-full bg-gray-300 border-2 border-white flex items-center justify-center text-xs font-semibold text-gray-600">
+                  +{room.users.length - 4}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Room Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content Area */}
+        {/* Main Layout - Timer Always Prominent */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-180px)]">
+          {/* Timer Section - Takes 2/3 width on large screens */}
           <div className="lg:col-span-2">
-            {/* Timer Section */}
-            <Timer
-              timerState={timerHook}
-              onStart={timerHook.startTimer}
-              onPause={timerHook.pauseTimer}
-              onReset={timerHook.resetTimer}
-              onModeChange={timerHook.changeMode}
-              canControl={timerHook.canControl}
-              room={room}
-              className="mb-6"
-            />
-
-            {/* Chat Section */}
-            <Chat
-              messages={chatHook.messages}
-              onSendMessage={chatHook.sendMessage}
-              currentUserId={currentUser?.id || currentUser?._id}
-              hostId={room.host?.id || room.host?._id}
-              isConnected={isConnected}
-              loading={chatHook.loading}
-            />
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 h-full">
+              <Timer
+                timerState={timerHook}
+                onStart={timerHook.startTimer}
+                onPause={timerHook.pauseTimer}
+                onReset={timerHook.resetTimer}
+                onModeChange={timerHook.changeMode}
+                canControl={timerHook.canControl}
+                room={room}
+                className="border-0 shadow-none rounded-none p-0 h-full"
+              />
+            </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Chat Sidebar - Takes 1/3 width */}
           <div className="lg:col-span-1">
-            {/* Members Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-50 p-6 mb-6">
-              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <HiUsers size={20} />
-                Members ({room.users?.length || 0})
-              </h3>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full">
+              {/* Chat Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-slate-800">Chat</h3>
+                  <div className={`w-2 h-2 rounded-full ${
+                    isConnected ? 'bg-green-500' : 'bg-red-500'
+                  }`} />
+                </div>
+              </div>
               
-              <div className="space-y-3">
+              {/* Chat Content */}
+              <div className="flex-1 min-h-0">
+                <Chat
+                  messages={chatHook.messages}
+                  onSendMessage={chatHook.sendMessage}
+                  currentUserId={currentUser?.id || currentUser?._id}
+                  hostId={room.host?.id || room.host?._id}
+                  isConnected={isConnected}
+                  loading={chatHook.loading}
+                  showHeader={false}
+                  className="h-full border-0 shadow-none rounded-none"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Members Toggle */}
+        <div className="md:hidden mt-4">
+          <button
+            onClick={() => setMembersCollapsed(!membersCollapsed)}
+            className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <HiUsers className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium text-slate-800">
+                View Members ({room.users?.length || 0})
+              </span>
+            </div>
+            {membersCollapsed ? (
+              <HiChevronDown className="w-4 h-4 text-gray-400" />
+            ) : (
+              <HiChevronUp className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+          
+          {!membersCollapsed && (
+            <div className="mt-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <div className="grid grid-cols-2 gap-2">
                 {room.users?.map((user, index) => {
                   const userId = user.id || user._id;
                   const hostId = room.host?.id || room.host?._id;
                   const isUserHost = userId === hostId;
                   
                   return (
-                    <div key={`user-${userId || index}-${roomId}`} className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    <div 
+                      key={`mobile-user-${userId || index}`} 
+                      className={`flex items-center gap-2 px-2 py-1 rounded-lg text-sm ${
+                        isUserHost 
+                          ? 'bg-blue-50 border border-blue-200' 
+                          : 'bg-gray-50'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold text-white ${
+                        isUserHost ? 'bg-blue-500' : 'bg-gray-500'
+                      }`}>
                         {user.name?.charAt(0).toUpperCase() || 'U'}
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-slate-800">{user.name || 'Unknown User'}</p>
-                        <p className="text-xs text-slate-500">
-                          {isUserHost && '👑 Host'}
-                        </p>
-                      </div>
+                      <span className={`font-medium truncate ${
+                        isUserHost ? 'text-blue-700' : 'text-slate-700'
+                      }`}>
+                        {user.name || 'Unknown'}
+                        {isUserHost && ' (Host)'}
+                      </span>
                     </div>
                   );
-                }) || (
-                  <p className="text-slate-500 text-center">No members found</p>
-                )}
+                })}
               </div>
             </div>
-
-            {/* Room Info */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-50 p-6">
-              <h3 className="text-lg font-bold text-slate-800 mb-4">Room Info</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Created:</span>
-                  <span className="text-slate-800">
-                    {room.createdAt ? new Date(room.createdAt).toLocaleDateString() : 'Unknown'}
-                  </span>
-                </div>
-                {room.timerSettings && (
-                  <>
-                    <div className="border-t pt-2 mt-3">
-                      <div className="text-slate-500 mb-2 font-medium">Timer Settings</div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Focus Session:</span>
-                          <span className="text-slate-800">{Math.round(room.timerSettings.focusDuration / 60)} minutes</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Short Break:</span>
-                          <span className="text-slate-800">{Math.round(room.timerSettings.shortBreakDuration / 60)} minutes</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Long Break:</span>
-                          <span className="text-slate-800">{Math.round(room.timerSettings.longBreakDuration / 60)} minutes</span>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

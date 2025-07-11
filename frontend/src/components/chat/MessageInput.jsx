@@ -49,7 +49,7 @@ const MessageInput = ({ onSendMessage, disabled = false, placeholder = "Type a m
 
   return (
     <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4 bg-white">
-      <div className="flex items-end gap-3">
+      <div className="flex items-start gap-3">
         {/* Message input */}
         <div className="flex-1">
           <textarea
@@ -78,7 +78,7 @@ const MessageInput = ({ onSendMessage, disabled = false, placeholder = "Type a m
         <button
           type="submit"
           disabled={!isMessageValid || disabled || isLoading}
-          className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+          className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all mt-0 ${
             isMessageValid && !disabled && !isLoading
               ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -87,7 +87,7 @@ const MessageInput = ({ onSendMessage, disabled = false, placeholder = "Type a m
           {isLoading ? (
             <div className="w-5 h-5 border-2 border-gray-300 border-t-white rounded-full animate-spin"></div>
           ) : (
-            <HiPaperAirplane className="w-5 h-5" />
+            <HiPaperAirplane className="w-5 h-5 rotate-90" />
           )}
         </button>
       </div>

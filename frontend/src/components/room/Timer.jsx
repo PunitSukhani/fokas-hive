@@ -19,10 +19,10 @@ const Timer = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Get progress percentage for circular progress bar
+  // Get progress percentage for circular progress bar - use progress from hook
   const getProgress = () => {
-    if (!timerState.totalTime || timerState.totalTime === 0) return 0;
-    return ((timerState.totalTime - timerState.timeRemaining) / timerState.totalTime) * 100;
+    // The timerState passed is actually the entire timerHook object
+    return timerState.progress || 0;
   };
 
   // Get mode display name
@@ -51,67 +51,66 @@ const Timer = ({
     }
   };
 
+  // Get mode color
+  const getModeColor = (mode) => {
+    switch (mode) {
+      case 'focus': return '#3B82F6'; // Blue
+      case 'shortBreak': return '#10B981'; // Green
+      case 'longBreak': return '#F59E0B'; // Orange
+      default: return '#3B82F6';
+    }
+  };
+
   const progress = getProgress();
-  const radius = 120;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
+  const progressColor = getModeColor(timerState.mode);
 
   return (
-    <div className={`bg-white rounded-2xl shadow-lg border border-gray-100 p-8 max-w-md mx-auto ${className}`}>
-      {/* Circular Timer Display */}
+    <div className={`bg-white rounded-xl border border-gray-100 max-w-full mx-auto h-full flex flex-col justify-center ${className}`}>
+      {/* Circular Timer Display - Made Larger for Prominence */}
       <div className="relative flex items-center justify-center mb-8">
-        <svg className="transform -rotate-90 w-80 h-80">
+        <svg className="transform -rotate-90 w-72 h-72">
           {/* Background circle */}
           <circle
-            cx="160"
-            cy="160"
-            r={radius}
+            cx="144"
+            cy="144"
+            r="128"
             stroke="#E5E7EB"
             strokeWidth="8"
             fill="none"
           />
           {/* Progress circle */}
           <circle
-            cx="160"
-            cy="160"
-            r={radius}
-            stroke="#3B82F6"
+            cx="144"
+            cy="144"
+            r="128"
+            stroke={progressColor}
             strokeWidth="8"
             fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
+            strokeDasharray={804.25}
+            strokeDashoffset={804.25 - (progress / 100) * 804.25}
             style={{ 
               transition: 'stroke-dashoffset 0.5s ease-in-out',
+              filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))'
             }}
           />
-          {/* Progress dot */}
-          {progress > 0 && (
-            <circle
-              cx={160 + radius * Math.cos((progress / 100) * 2 * Math.PI - Math.PI / 2)}
-              cy={160 + radius * Math.sin((progress / 100) * 2 * Math.PI - Math.PI / 2)}
-              r="6"
-              fill="#3B82F6"
-            />
-          )}
         </svg>
         
-        {/* Timer Display */}
+        {/* Timer Display - Enhanced for Focus */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-6xl font-bold text-blue-600 mb-2">
+          <div className="text-6xl font-bold mb-3" style={{ color: progressColor }}>
             {formatTime(timerState.timeRemaining || 0)}
           </div>
-          <div className="text-lg text-gray-600 mb-1">
+          <div className="text-xl text-gray-600 mb-2">
             {getModeDisplayName(timerState.mode)}
           </div>
-          <div className="text-sm text-gray-500">
+          <div className="text-lg text-gray-500">
             {timerState.isRunning ? 'Running' : 'Paused'}
           </div>
         </div>
       </div>
 
-      {/* Mode Selection Buttons */}
-      <div className="flex justify-center gap-2 mb-8">
+      {/* Mode Selection Buttons - With Duration Display */}
+      <div className="flex justify-center gap-4 mb-8">
         {['focus', 'shortBreak', 'longBreak'].map((mode) => {
           const isActive = timerState.mode === mode;
           const modeLabels = {
@@ -119,48 +118,53 @@ const Timer = ({
             shortBreak: 'Short Break', 
             longBreak: 'Long Break'
           };
+          const duration = getModeDuration(mode);
+          const modeColor = getModeColor(mode);
           
           return (
             <button
               key={mode}
               onClick={() => canControl && onModeChange && onModeChange(mode)}
               disabled={!canControl || timerState.isRunning}
-              className={`px-6 py-3 text-sm font-medium rounded-lg transition-all ${
+              className={`px-6 py-4 text-sm font-medium rounded-xl transition-all flex flex-col items-center min-w-[100px] border-2 ${
                 isActive 
-                  ? 'bg-blue-600 text-white shadow-lg' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'text-white shadow-lg scale-105 border-transparent' 
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               } ${
                 !canControl || timerState.isRunning 
                   ? 'opacity-50 cursor-not-allowed' 
                   : 'cursor-pointer'
               }`}
+              style={isActive ? { backgroundColor: modeColor } : {}}
             >
-              {modeLabels[mode]}
+              <span className="text-sm font-medium">{modeLabels[mode]}</span>
+              <span className="text-lg font-bold">{duration}m</span>
             </button>
           );
         })}
       </div>
 
-      {/* Control Buttons */}
-      <div className="flex justify-center gap-4 mb-8">
+      {/* Control Buttons - Enhanced Size and Styling */}
+      <div className="flex justify-center gap-6 mb-6">
         {/* Start/Pause Button */}
         <button
           onClick={timerState.isRunning ? onPause : onStart}
           disabled={!canControl}
-          className={`flex items-center justify-center px-8 py-3 rounded-lg text-white font-medium transition-all ${
+          className={`flex items-center justify-center px-10 py-4 rounded-xl text-white font-medium transition-all text-xl ${
             canControl 
-              ? 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg' 
+              ? 'hover:shadow-lg hover:scale-105' 
               : 'bg-gray-400 cursor-not-allowed'
           }`}
+          style={canControl ? { backgroundColor: progressColor } : {}}
         >
           {timerState.isRunning ? (
             <>
-              <HiPause size={20} className="mr-2" />
+              <HiPause size={24} className="mr-3" />
               Pause
             </>
           ) : (
             <>
-              <HiPlay size={20} className="mr-2" />
+              <HiPlay size={24} className="mr-3" />
               Start
             </>
           )}
@@ -170,11 +174,12 @@ const Timer = ({
         <button
           onClick={onReset}
           disabled={!canControl}
-          className={`flex items-center justify-center px-6 py-3 rounded-lg border-2 font-medium transition-all ${
+          className={`flex items-center justify-center px-8 py-4 rounded-xl border-2 font-medium transition-all text-lg ${
             canControl
-              ? 'border-blue-600 text-blue-600 hover:bg-blue-50'
+              ? 'hover:bg-gray-50 hover:scale-105'
               : 'border-gray-300 text-gray-400 cursor-not-allowed'
           }`}
+          style={canControl ? { borderColor: progressColor, color: progressColor } : {}}
         >
           <HiArrowPath size={20} className="mr-2" />
           Reset
@@ -183,8 +188,8 @@ const Timer = ({
 
       {/* Additional Info */}
       {!canControl && (
-        <div className="text-center mt-4">
-          <p className="text-sm text-gray-500">
+        <div className="text-center">
+          <p className="text-sm text-gray-500 bg-gray-50 rounded-lg py-3 px-4">
             Only the host can control the timer
           </p>
         </div>

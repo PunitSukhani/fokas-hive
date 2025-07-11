@@ -200,9 +200,18 @@ const Dashboard = () => {
           focusDuration={focusDuration}
           shortBreakDuration={shortBreakDuration}
           longBreakDuration={longBreakDuration}
-          onFocusDurationChange={(e) => setFocusDuration(parseInt(e.target.value) || 25)}
-          onShortBreakDurationChange={(e) => setShortBreakDuration(parseInt(e.target.value) || 5)}
-          onLongBreakDurationChange={(e) => setLongBreakDuration(parseInt(e.target.value) || 15)}
+          onFocusDurationChange={(e) => {
+            const value = e.target.value;
+            setFocusDuration(value === '' ? '' : parseInt(value) || 1);
+          }}
+          onShortBreakDurationChange={(e) => {
+            const value = e.target.value;
+            setShortBreakDuration(value === '' ? '' : parseInt(value) || 1);
+          }}
+          onLongBreakDurationChange={(e) => {
+            const value = e.target.value;
+            setLongBreakDuration(value === '' ? '' : parseInt(value) || 1);
+          }}
           isConnected={socketConnected}
         />
       </div>
