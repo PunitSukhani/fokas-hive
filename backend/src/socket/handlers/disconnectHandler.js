@@ -1,6 +1,27 @@
 import Room from '../../models/Room.js';
 import { broadcastActiveRooms, deleteRoomIfEmpty } from './roomHandler.js';
 
+/**
+ * Socket Disconnect Handler
+ * 
+ * Manages cleanup when users disconnect from the Socket.IO server including:
+ * - Removing users from all rooms they were in
+ * - Updating room user lists and broadcasting changes
+ * - Deleting empty rooms automatically
+ * - Preventing duplicate notifications
+ * - Updating active users tracking
+ * 
+ * This handler ensures clean state management when users lose connection
+ * either intentionally (closing browser) or unintentionally (network issues).
+ */
+
+/**
+ * Handle user disconnection cleanup
+ * Removes user from all rooms and broadcasts updates
+ * @param {Object} io - Socket.IO server instance
+ * @param {Object} socket - Disconnecting socket
+ * @param {Map} activeUsers - Map of active user IDs to socket IDs
+ */
 export const handleDisconnect = async (io, socket, activeUsers) => {
   console.log('User disconnected:', socket.id);
   

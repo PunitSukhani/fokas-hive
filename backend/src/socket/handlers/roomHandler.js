@@ -1,6 +1,28 @@
-  import Room from '../../models/Room.js';
+import Room from '../../models/Room.js';
 
-// Helper function to handle room deletion when empty (prevents duplicate notifications)
+/**
+ * Socket Room Handler
+ * 
+ * Handles Socket.IO events related to room management including:
+ * - User joining and leaving rooms
+ * - Broadcasting room updates
+ * - Managing room lifecycle (creation/deletion)
+ * - Real-time user list synchronization
+ * 
+ * Key features:
+ * - Automatic cleanup of empty rooms
+ * - Real-time user presence tracking
+ * - Duplicate user prevention
+ * - Broadcasting active rooms to all clients
+ */
+
+/**
+ * Helper function to handle room deletion when empty
+ * Prevents duplicate notifications and ensures clean room lifecycle
+ * @param {Object} io - Socket.IO server instance
+ * @param {Object} room - Room document to check and potentially delete
+ * @returns {Promise<boolean>} True if room was deleted, false otherwise
+ */
 export const deleteRoomIfEmpty = async (io, room) => {
   if (!room || room.users.length > 0) {
     return false; // Room not deleted
@@ -16,7 +38,11 @@ export const deleteRoomIfEmpty = async (io, room) => {
   return true; // Room was deleted
 };
 
-// Helper function to format rooms for frontend
+/**
+ * Helper function to format rooms for frontend
+ * @param {Array} rooms - Array of room documents to format
+ * @returns {Array} Formatted room objects for frontend
+ */
 const formatRoomsForFrontend = (rooms) => {
   return rooms.map(room => {
     // Calculate current timer state if timer is running
@@ -42,7 +68,11 @@ const formatRoomsForFrontend = (rooms) => {
   });
 };
 
-// Helper function to calculate current timer state
+/**
+ * Helper function to calculate current timer state
+ * @param {Object} timerState - Timer state object from room document
+ * @returns {Object} Updated timer state with calculated time remaining
+ */
 const calculateCurrentTimerState = (timerState) => {
   if (!timerState.isRunning || !timerState.startedAt) {
     return timerState;
@@ -59,6 +89,17 @@ const calculateCurrentTimerState = (timerState) => {
   };
 };
 
+/**
+ * Handles user joining a room
+ * - Validates and finds the room
+ * - Adds or updates the user in the room
+ * - Emits updated user list and room data to clients
+ * - Notifies others in the room about the new user
+ * - Broadcasts updated active rooms to all clients
+ * @param {Object} io - Socket.IO server instance
+ * @param {Object} socket - Socket instance of the user
+ * @param {Object} param1 - Parameters containing roomId
+ */
 export const handleJoinRoom = async (io, socket, { roomId }) => {
   try {
     console.log(`[Socket] Join room attempt: ${roomId} by user:`, socket.user.id);
@@ -155,6 +196,18 @@ export const handleJoinRoom = async (io, socket, { roomId }) => {
   }
 };
 
+/**
+ * Handles user leaving a room
+ * - Validates and finds the room
+ * - Removes the user from the room
+ * - Deletes the room if it becomes empty
+ * - Emits updated user list to remaining users
+ * - Notifies others in the room about the user leaving
+ * - Broadcasts updated active rooms to all clients
+ * @param {Object} io - Socket.IO server instance
+ * @param {Object} socket - Socket instance of the user
+ * @param {Object} param1 - Parameters containing roomId
+ */
 export const handleLeaveRoom = async (io, socket, { roomId }) => {
   try {
     // Find room
@@ -215,6 +268,14 @@ export const handleLeaveRoom = async (io, socket, { roomId }) => {
   }
 };
 
+/**
+ * Handles request for active rooms
+ * - Retrieves all rooms with at least one user
+ * - Formats room data for frontend
+ * - Emits active rooms data to the requesting user
+ * @param {Object} io - Socket.IO server instance
+ * @param {Object} socket - Socket instance of the user
+ */
 export const handleGetActiveRooms = async (io, socket) => {
   try {
     console.log(`[Socket] Get active rooms request from user:`, socket.user.id);
@@ -236,7 +297,13 @@ export const handleGetActiveRooms = async (io, socket) => {
   }
 };
 
-// Helper function to broadcast active rooms to all connected clients
+/**
+ * Helper function to broadcast active rooms to all connected clients
+ * - Retrieves all rooms with at least one user
+ * - Formats room data for frontend
+ * - Emits active rooms data to all clients
+ * @param {Object} io - Socket.IO server instance
+ */
 export const broadcastActiveRooms = async (io) => {
   try {
     const activeRooms = await Room.find({ 

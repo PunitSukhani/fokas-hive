@@ -1,6 +1,30 @@
 import Room from '../../models/Room.js';
 
-// Helper function to calculate current timer state
+/**
+ * Socket Timer Handler
+ * 
+ * Manages real-time timer functionality for rooms including:
+ * - Starting, pausing, and resetting timers
+ * - Changing timer modes (focus, short break, long break)
+ * - Host-only timer control validation
+ * - Real-time timer state synchronization
+ * - Timer completion handling
+ * 
+ * Timer modes:
+ * - focus: Main study session
+ * - shortBreak: Brief break between sessions
+ * - longBreak: Extended break after multiple sessions
+ * 
+ * Only the room host can control the timer. All timer state changes
+ * are broadcast to all room members in real-time.
+ */
+
+/**
+ * Calculate current timer state based on elapsed time
+ * Used to sync timer display across all clients
+ * @param {Object} timerState - Timer state from database
+ * @returns {Object} Updated timer state with current time remaining
+ */
 const calculateCurrentTimerState = (timerState) => {
   if (!timerState.isRunning || !timerState.startedAt) {
     return timerState;
@@ -18,10 +42,24 @@ const calculateCurrentTimerState = (timerState) => {
 };
 
 // Helper to check if user is the host
+/**
+ * Check if user is the host of the room
+ * @param {Object} room - Room document
+ * @param {string} userId - User ID to check
+ * @returns {boolean} True if user is the host
+ */
 const isUserHost = (room, userId) => {
   return room.host.toString() === userId.toString();
 };
 
+/**
+ * Handle timer start request
+ * Only room host can start the timer
+ * @param {Object} io - Socket.IO server instance
+ * @param {Object} socket - Client socket requesting timer start
+ * @param {Object} data - Request data containing roomId
+ * @param {string} data.roomId - ID of the room to start timer for
+ */
 export const handleStartTimer = async (io, socket, { roomId }) => {
   try {
     const room = await Room.findById(roomId);

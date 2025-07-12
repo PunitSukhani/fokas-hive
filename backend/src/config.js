@@ -1,6 +1,21 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+/**
+ * Application Configuration
+ * 
+ * Central configuration object for the FokasHive backend application.
+ * Manages environment variables and provides default values for:
+ * 
+ * - Server settings (port, database connection)
+ * - Authentication & JWT configuration
+ * - Session management settings
+ * - CORS policy configuration
+ * - Cookie security settings
+ * 
+ * Configuration is environment-aware with different settings for
+ * development and production environments.
+ */
 export default {
   PORT: process.env.PORT || 5000,
   MONGO_URI: process.env.MONGO_URI,

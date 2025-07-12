@@ -3,7 +3,46 @@ import User from '../models/User.js';
 import { getSocketInstance } from '../utils/socketInstance.js';
 import { broadcastActiveRooms } from '../socket/handlers/roomHandler.js';
 
-// Helper function to format rooms for frontend
+/**
+ * Room Controller - API endpoints for room management
+ * 
+ * Handles HTTP requests for room operations including:
+ * - Creating new rooms with timer settings
+ * - Joining existing rooms
+ * - Fetching room details and active rooms list
+ * 
+ * All endpoints require authentication via JWT middleware.
+ * Integrates with Socket.IO for real-time updates.
+ */
+
+/**
+ * Calculate current timer state based on elapsed time
+ * Updates timeRemaining if timer is running based on actual elapsed time
+ * @param {Object} timerState - Current timer state from database
+ * @returns {Object} Updated timer state with current timeRemaining
+ */
+const calculateCurrentTimerState = (timerState) => {
+  if (!timerState.isRunning || !timerState.startedAt) {
+    return timerState;
+  }
+  
+  const now = new Date();
+  const startedAt = new Date(timerState.startedAt);
+  const elapsedSeconds = Math.floor((now - startedAt) / 1000);
+  const currentTimeRemaining = Math.max(0, timerState.timeRemaining - elapsedSeconds);
+  
+  return {
+    ...timerState,
+    timeRemaining: currentTimeRemaining
+  };
+};
+
+/**
+ * Helper function to format rooms for frontend consumption
+ * Calculates current timer states and formats user data
+ * @param {Array} rooms - Array of room documents from MongoDB
+ * @returns {Array} Formatted room objects for frontend
+ */
 const formatRoomsForFrontend = (rooms) => {
   return rooms.map(room => {
     // Calculate current timer state if timer is running
@@ -29,7 +68,12 @@ const formatRoomsForFrontend = (rooms) => {
   });
 };
 
-// Helper function to broadcast active rooms via Socket.IO
+/**
+ * Helper function to broadcast active rooms to all connected clients via Socket.IO
+ * Fetches current active rooms from database and emits to all connected clients
+ * @returns {Promise<Array>} Promise resolving to formatted rooms array
+ * @throws {Error} If database query or broadcast fails
+ */
 const broadcastActiveRoomsToAll = async () => {
   try {
     // Get active rooms with populated user data
@@ -54,6 +98,22 @@ const broadcastActiveRoomsToAll = async () => {
   }
 };
 
+/**
+ * API endpoint to create a new room
+ * 
+ * Creates a new room with the authenticated user as host.
+ * Validates room name uniqueness and timer duration settings.
+ * Automatically joins the creator to the room.
+ * 
+ * @param {Object} req - Express request object
+ * @param {string} req.body.name - Room name (required, must be unique)
+ * @param {number} req.body.focusDuration - Focus session duration in minutes (default: 25)
+ * @param {number} req.body.shortBreakDuration - Short break duration in minutes (default: 5)
+ * @param {number} req.body.longBreakDuration - Long break duration in minutes (default: 15)
+ * @param {Object} req.user - Authenticated user data from auth middleware
+ * @param {Object} res - Express response object
+ * @returns {Object} JSON response with created room data or error message
+ */
 export const createRoom = async (req, res) => {
   try {
     const { 
@@ -125,6 +185,13 @@ export const createRoom = async (req, res) => {
   }
 };
 
+/**
+ * Get a list of all rooms
+ * 
+ * @param {Object} req - HTTP request object
+ * @param {Object} res - HTTP response object
+ * @returns {Array} List of room objects
+ */
 export const getRooms = async (req, res) => {
   try {
     const rooms = await Room.find().populate('host', 'name email');
@@ -135,7 +202,13 @@ export const getRooms = async (req, res) => {
   }
 };
 
-// Debug endpoint to get all rooms including empty ones
+/**
+ * Debug endpoint to get all rooms including empty ones
+ * 
+ * @param {Object} req - HTTP request object
+ * @param {Object} res - HTTP response object
+ * @returns {Object} Debug information including all rooms
+ */
 export const getAllRoomsDebug = async (req, res) => {
   try {
     const allRooms = await Room.find().populate('host', 'name email');
@@ -166,7 +239,13 @@ export const getAllRoomsDebug = async (req, res) => {
   }
 };
 
-// Cleanup endpoint to remove empty rooms
+/**
+ * Cleanup endpoint to remove empty rooms
+ * 
+ * @param {Object} req - HTTP request object
+ * @param {Object} res - HTTP response object
+ * @returns {Object} Cleanup result including deleted rooms
+ */
 export const cleanupEmptyRooms = async (req, res) => {
   try {
     const emptyRooms = await Room.find({ 
@@ -197,23 +276,15 @@ export const cleanupEmptyRooms = async (req, res) => {
   }
 };
 
-// Helper function to calculate current timer state
-const calculateCurrentTimerState = (timerState) => {
-  if (!timerState.isRunning || !timerState.startedAt) {
-    return timerState;
-  }
-  
-  const now = new Date();
-  const startedAt = new Date(timerState.startedAt);
-  const elapsedSeconds = Math.floor((now - startedAt) / 1000);
-  const currentTimeRemaining = Math.max(0, timerState.timeRemaining - elapsedSeconds);
-  
-  return {
-    ...timerState,
-    timeRemaining: currentTimeRemaining
-  };
-};
 
+
+/**
+ * Get details of a specific room
+ * 
+ * @param {Object} req - HTTP request object
+ * @param {Object} res - HTTP response object
+ * @returns {Object} Room object with user details
+ */
 export const getRoom = async (req, res) => {
   try {
     const room = await Room.findById(req.params.id)
@@ -246,6 +317,13 @@ export const getRoom = async (req, res) => {
   }
 };
 
+/**
+ * Join an existing room
+ * 
+ * @param {Object} req - HTTP request object
+ * @param {Object} res - HTTP response object
+ * @returns {Object} Updated room object with joined user
+ */
 export const joinRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
@@ -324,7 +402,13 @@ export const joinRoom = async (req, res) => {
   }
 };
 
-// New endpoint for getting active rooms via REST API
+/**
+ * Get a list of active rooms
+ * 
+ * @param {Object} req - HTTP request object
+ * @param {Object} res - HTTP response object
+ * @returns {Array} List of active room objects
+ */
 export const getActiveRooms = async (req, res) => {
   try {
     console.log('[REST] Get active rooms request');

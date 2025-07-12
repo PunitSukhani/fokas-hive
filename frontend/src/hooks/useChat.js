@@ -1,6 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 
+/**
+ * Custom Hook for Chat Management
+ * 
+ * Manages real-time chat functionality for FokasHive rooms including:
+ * - Message sending and receiving via Socket.IO
+ * - System message generation (join/leave notifications)
+ * - Message state management and persistence
+ * - Duplicate message prevention
+ * - Error handling and user feedback
+ * 
+ * Features:
+ * - Real-time message synchronization
+ * - System notifications for user activities
+ * - Message validation and error handling
+ * - Automatic cleanup on room changes
+ * - Toast notifications for errors
+ * 
+ * @param {Object} socket - Socket.IO client instance
+ * @param {string} roomId - Current room ID for chat context
+ * @param {boolean} isConnected - Socket connection status
+ * @returns {Object} Chat state and methods
+ * @returns {Array} messages - Array of chat messages in chronological order
+ * @returns {boolean} loading - Whether chat is in loading state
+ * @returns {Function} sendMessage - Function to send a new message
+ * @returns {Function} addSystemMessage - Function to add system notifications
+ */
+
 const useChat = (socket, roomId, isConnected = false) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);

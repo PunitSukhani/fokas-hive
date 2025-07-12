@@ -3,6 +3,22 @@ import { HiChat } from 'react-icons/hi';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 
+/**
+ * Chat Component
+ * 
+ * Main chat interface combining message list and input components.
+ * Displays real-time messages between room members with connection status.
+ * 
+ * @param {Array} messages - Array of chat messages
+ * @param {Function} onSendMessage - Function to send a new message
+ * @param {string} currentUserId - ID of the current user
+ * @param {string} hostId - ID of the room host
+ * @param {boolean} isConnected - Socket connection status
+ * @param {boolean} loading - Whether messages are loading
+ * @param {string} className - Additional CSS classes
+ * @param {boolean} showHeader - Whether to show chat header
+ * @returns {JSX.Element} Complete chat interface
+ */
 const Chat = ({ 
   messages = [], 
   onSendMessage, 

@@ -1,6 +1,26 @@
 import React from 'react';
 import { HiOutlineX, HiClock } from 'react-icons/hi';
 
+/**
+ * Create Room Modal Component
+ * 
+ * Modal dialog for creating a new FokasHive room with customizable timer settings.
+ * Allows users to set room name and Pomodoro timer durations.
+ * 
+ * @param {boolean} isOpen - Whether modal is visible
+ * @param {Function} onClose - Function to close modal
+ * @param {Function} onSubmit - Function called when form is submitted
+ * @param {string} roomName - Current room name value
+ * @param {Function} onRoomNameChange - Handler for room name input
+ * @param {number} focusDuration - Focus session duration in minutes
+ * @param {number} shortBreakDuration - Short break duration in minutes
+ * @param {number} longBreakDuration - Long break duration in minutes
+ * @param {Function} onFocusDurationChange - Handler for focus duration
+ * @param {Function} onShortBreakDurationChange - Handler for short break duration
+ * @param {Function} onLongBreakDurationChange - Handler for long break duration
+ * @param {boolean} isConnected - Socket connection status
+ * @returns {JSX.Element|null} Modal dialog or null if closed
+ */
 const CreateRoomModal = ({ 
   isOpen, 
   onClose, 
@@ -45,7 +65,7 @@ const CreateRoomModal = ({
               type="text"
               value={roomName}
               onChange={onRoomNameChange}
-              placeholder="Enter a name for your study room"
+              placeholder="Enter a name for your focus room"
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
               disabled={!isConnected}

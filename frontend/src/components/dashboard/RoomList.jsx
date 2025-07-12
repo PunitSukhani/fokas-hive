@@ -1,6 +1,21 @@
 import React from 'react';
 import { HiOutlineUsers, HiPlus, HiClock, HiUser } from 'react-icons/hi';
 
+/**
+ * Room List Component
+ * 
+ * Displays a grid of available focus rooms with member info, timer status,
+ * and join functionality. Shows loading, error, and empty states.
+ * 
+ * @param {boolean} loading - Whether rooms are being loaded
+ * @param {string|null} error - Error message if loading failed
+ * @param {Array} rooms - Array of room objects to display
+ * @param {Function} onJoinRoom - Function called when user joins a room
+ * @param {Function} onCreateRoom - Function called when user creates a room
+ * @param {Function} onRetryConnection - Function to retry connection
+ * @param {Object} userPresence - User presence/activity data
+ * @returns {JSX.Element} Room list or appropriate state component
+ */
 const RoomList = ({ 
   loading, 
   error, 
@@ -10,7 +25,11 @@ const RoomList = ({
   onRetryConnection,
   userPresence = {} 
 }) => {
-  // Avatar display helper
+  /**
+   * Generate user initials from name for avatar display
+   * @param {string} name - User's name
+   * @returns {string} User initials (up to 2 characters)
+   */
   const getInitials = (name) => {
     if (!name) return 'U';
     return name
@@ -21,7 +40,11 @@ const RoomList = ({
       .substring(0, 2);
   };
 
-  // Avatar color helper
+  /**
+   * Get consistent color for user avatar based on name
+   * @param {string} name - User's name
+   * @returns {string} CSS class for avatar background color
+   */
   const getAvatarColor = (name) => {
     if (!name) return 'bg-gray-500';
     const colors = [
@@ -32,7 +55,11 @@ const RoomList = ({
     return colors[index];
   };
 
-  // Format timestamp helper
+  /**
+   * Format timestamp for display (shows time today, date for older)
+   * @param {string|Date} timestamp - Timestamp to format
+   * @returns {string} Formatted time string
+   */
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
@@ -71,8 +98,8 @@ const RoomList = ({
             <HiOutlineUsers className="w-10 h-10 text-blue-300" />
           </div>
         </div>
-        <h3 className="text-slate-800 text-xl font-medium mb-2">No Study Rooms Available</h3>
-        <p className="text-slate-500 mb-6">There are currently no active study rooms. Be the first to create one!</p>
+        <h3 className="text-slate-800 text-xl font-medium mb-2">No Focus Rooms Available</h3>
+        <p className="text-slate-500 mb-6">There are currently no active focus rooms. Be the first to create one!</p>
         <button
           onClick={onCreateRoom}
           className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 mx-auto"
@@ -89,7 +116,7 @@ const RoomList = ({
       {/* Active Rooms Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Active Study Rooms</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Active Focus Rooms</h2>
           <p className="text-slate-500">{rooms.length} room{rooms.length !== 1 ? 's' : ''} currently active</p>
         </div>
         <div className="text-sm text-slate-400 flex items-center gap-1">

@@ -21,7 +21,7 @@ const RoomPage = () => {
   const [membersCollapsed, setMembersCollapsed] = useState(true); // Start collapsed on mobile
   
   // Socket connection for real-time updates
-  const { socket, isConnected } = useSocket('http://localhost:5000');
+  const { socket, isConnected } = useSocket(import.meta.env.VITE_SOCKET_SERVER_URL || 'http://localhost:5000');
 
   // Check if current user is the host - simplified and more robust
   const isHost = useMemo(() => {
@@ -292,61 +292,6 @@ const RoomPage = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Mobile Members Toggle */}
-        <div className="md:hidden mt-4">
-          <button
-            onClick={() => setMembersCollapsed(!membersCollapsed)}
-            className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <HiUsers className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-slate-800">
-                View Members ({room.users?.length || 0})
-              </span>
-            </div>
-            {membersCollapsed ? (
-              <HiChevronDown className="w-4 h-4 text-gray-400" />
-            ) : (
-              <HiChevronUp className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
-          
-          {!membersCollapsed && (
-            <div className="mt-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-              <div className="grid grid-cols-2 gap-2">
-                {room.users?.map((user, index) => {
-                  const userId = user.id || user._id;
-                  const hostId = room.host?.id || room.host?._id;
-                  const isUserHost = userId === hostId;
-                  
-                  return (
-                    <div 
-                      key={`mobile-user-${userId || index}`} 
-                      className={`flex items-center gap-2 px-2 py-1 rounded-lg text-sm ${
-                        isUserHost 
-                          ? 'bg-blue-50 border border-blue-200' 
-                          : 'bg-gray-50'
-                      }`}
-                    >
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold text-white ${
-                        isUserHost ? 'bg-blue-500' : 'bg-gray-500'
-                      }`}>
-                        {user.name?.charAt(0).toUpperCase() || 'U'}
-                      </div>
-                      <span className={`font-medium truncate ${
-                        isUserHost ? 'text-blue-700' : 'text-slate-700'
-                      }`}>
-                        {user.name || 'Unknown'}
-                        {isUserHost && ' (Host)'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

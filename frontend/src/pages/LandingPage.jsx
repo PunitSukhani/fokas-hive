@@ -11,7 +11,7 @@ const LandingPage = () => {
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <span className="text-2xl font-bold text-blue-600">
-                Study<span className="text-slate-800">Room</span>
+                Fokas<span className="text-slate-800">Hive</span>
               </span>
             </div>
             <div className="flex items-center space-x-6">
@@ -50,7 +50,7 @@ const LandingPage = () => {
               <div className="bg-gradient-to-br from-blue-500 to-indigo-600 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md">
                 <HiUserGroup className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-3">Study Groups</h3>
+              <h3 className="text-2xl font-bold text-slate-800 mb-3">Focus Groups</h3>
               <p className="text-slate-600 text-lg">
                 Create or join virtual rooms and collaborate with students worldwide.
               </p>
@@ -62,7 +62,7 @@ const LandingPage = () => {
               </div>
               <h3 className="text-2xl font-bold text-slate-800 mb-3">Focus Timer</h3>
               <p className="text-slate-600 text-lg">
-                Boost productivity with our Pomodoro-style study timer and session tracking.
+                Boost productivity with our Pomodoro-style study timer.
               </p>
 
             </div>

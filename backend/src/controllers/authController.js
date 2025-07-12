@@ -3,9 +3,34 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import config from '../config.js';
 
+/**
+ * Authentication Controller
+ * 
+ * Handles user authentication endpoints including:
+ * - User registration with password hashing
+ * - User login with JWT token generation
+ * - User profile retrieval
+ * - Logout with cookie cleanup
+ * 
+ * Security features:
+ * - Password hashing with bcrypt
+ * - JWT tokens stored in HTTP-only cookies
+ * - Email uniqueness validation
+ * - Secure cookie configuration for production
+ */
+
 // Cookie options for JWT token from config
 const cookieOptions = config.SESSION.COOKIE_OPTIONS;
 
+/**
+ * Register a new user account
+ * @param {Object} req - Express request object
+ * @param {string} req.body.name - User's display name
+ * @param {string} req.body.email - User's email address (must be unique)
+ * @param {string} req.body.password - User's password (will be hashed)
+ * @param {Object} res - Express response object
+ * @returns {Object} JSON response with user data or error message
+ */
 export const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -26,6 +51,14 @@ export const signup = async (req, res) => {
   }
 };
 
+/**
+ * Log in an existing user
+ * @param {Object} req - Express request object
+ * @param {string} req.body.email - User's email address
+ * @param {string} req.body.password - User's password
+ * @param {Object} res - Express response object
+ * @returns {Object} JSON response with user data or error message
+ */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -70,6 +103,12 @@ export const login = async (req, res) => {
   }
 };
 
+/**
+ * Get the profile of the logged-in user
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} JSON response with user data or error message
+ */
 export const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
@@ -81,6 +120,13 @@ export const getMe = async (req, res) => {
   }
 };
 
+/**
+ * Log out the current user
+ * Clears the authentication cookie
+ * @param {Object} req - Express request object 
+ * @param {Object} res - Express response object
+ * @returns {Object} JSON response confirming logout
+ */
 export const logout = async (req, res) => {
   try {
     res.clearCookie('token', {

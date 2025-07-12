@@ -1,5 +1,31 @@
 import Room from '../../models/Room.js';
 
+/**
+ * Socket Chat Handler
+ * 
+ * Manages real-time chat functionality for rooms including:
+ * - Message validation and processing
+ * - Room membership verification
+ * - Message broadcasting to room members
+ * - Character limits and content filtering
+ * 
+ * Features:
+ * - Maximum 500 character limit per message
+ * - Automatic message ID generation
+ * - User verification (must be in room to send messages)
+ * - Real-time message broadcasting
+ * - System message support for notifications
+ */
+
+/**
+ * Handle sending a chat message to a room
+ * Validates message content, verifies user is in room, and broadcasts to all room members
+ * @param {Object} io - Socket.IO server instance
+ * @param {Object} socket - Client socket sending the message
+ * @param {Object} data - Message data
+ * @param {string} data.roomId - ID of the room to send message to
+ * @param {string} data.message - Message content to send
+ */
 export const handleSendMessage = async (io, socket, { roomId, message }) => {
   try {
     // Validate input

@@ -1,5 +1,21 @@
 import jwt from 'jsonwebtoken';
 
+/**
+ * Authentication Middleware
+ * 
+ * Express middleware for protecting routes that require authentication.
+ * Verifies JWT tokens from cookies (preferred) or Authorization header (fallback).
+ * Attaches authenticated user data to the request object.
+ * 
+ * Token sources (in order of preference):
+ * 1. HTTP-only cookies (secure, preferred for web clients)
+ * 2. Authorization header with Bearer token (for API clients)
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object  
+ * @param {Function} next - Next middleware function
+ * @returns {Object} 401 response if authentication fails, otherwise calls next()
+ */
 export const auth = (req, res, next) => {
   try {
     // Check for token in cookies first (preferred)

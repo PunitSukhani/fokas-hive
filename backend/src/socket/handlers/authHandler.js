@@ -2,6 +2,22 @@ import jwt from 'jsonwebtoken';
 import User from '../../models/User.js';
 import cookie from 'cookie';
 
+/**
+ * Socket Authentication Handler
+ * 
+ * Middleware for authenticating Socket.IO connections using JWT tokens.
+ * Supports multiple token sources: cookies, auth object, and query parameters.
+ * Attaches authenticated user data to the socket instance.
+ * 
+ * Token sources (in priority order):
+ * 1. HTTP cookies (preferred for web clients)
+ * 2. Socket auth object 
+ * 3. Query parameters (useful for testing)
+ * 
+ * @param {Object} socket - Socket.IO socket instance
+ * @param {Function} next - Next middleware function
+ * @throws {Error} If token is missing, invalid, or user not found
+ */
 export const authenticateSocket = async (socket, next) => {
   try {
     let token;

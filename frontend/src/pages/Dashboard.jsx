@@ -8,8 +8,8 @@ import RoomList from '../components/dashboard/RoomList';
 import CreateRoomModal from '../components/dashboard/CreateRoomModal';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
-// Server URL configuration - could be moved to .env file
-const SOCKET_SERVER_URL = 'http://localhost:5000';
+// Server URL configuration from environment variables
+const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_SERVER_URL || 'http://localhost:5000';
 
 const Dashboard = () => {
   // Socket hook for real-time communication
@@ -162,14 +162,14 @@ const Dashboard = () => {
         <div className="max-w-6xl mx-auto px-4 py-8">
           <DashboardHeader />
           
-          {/* Connection Status Indicator */}
+          {/*{Connection Status Indicator}
           <div className="mb-4 flex gap-2 text-sm">
             <div className={`px-2 py-1 rounded text-xs ${
               socketConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
             }`}>
               Socket.IO: {socketConnected ? 'Connected' : 'Disconnected'}
             </div>
-          </div>
+          </div> */}
 
           <SearchAndCreateBar 
             searchTerm={searchTerm}

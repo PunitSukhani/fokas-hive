@@ -1,6 +1,20 @@
 import React, { useEffect, useRef } from 'react';
 import Message from './Message';
 
+/**
+ * Message List Component
+ * 
+ * Scrollable container for displaying chat messages with auto-scroll behavior.
+ * Automatically scrolls to bottom when new messages arrive.
+ * Shows loading state and empty state when appropriate.
+ * 
+ * @param {Array} messages - Array of message objects to display
+ * @param {string} currentUserId - ID of current user for message styling
+ * @param {string} hostId - ID of room host for special styling
+ * @param {boolean} loading - Whether messages are being loaded
+ * @param {string} className - Additional CSS classes
+ * @returns {JSX.Element} Scrollable message list
+ */
 const MessageList = ({ 
   messages = [], 
   currentUserId, 

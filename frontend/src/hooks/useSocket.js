@@ -2,10 +2,28 @@ import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
 /**
- * Custom hook for managing Socket.IO connections
- * @param {string} url - Socket server URL
- * @param {Object} options - Socket.IO options
- * @returns {Object} Socket connection, connection state, and helper methods
+ * Custom Hook for Socket.IO Connection Management
+ * 
+ * Manages Socket.IO connection lifecycle including:
+ * - Automatic connection establishment
+ * - Connection state tracking
+ * - Error handling and reconnection
+ * - Cleanup on component unmount
+ * 
+ * Features:
+ * - Automatic authentication via cookies
+ * - Connection status monitoring
+ * - Error state management
+ * - Manual reconnection capability
+ * - Proper cleanup to prevent memory leaks
+ * 
+ * @param {string} url - Socket server URL to connect to
+ * @param {Object} options - Additional Socket.IO options
+ * @returns {Object} Socket connection state and methods
+ * @returns {Object} socket - Socket.IO client instance
+ * @returns {boolean} isConnected - Current connection status
+ * @returns {string|null} connectionError - Error message if connection failed
+ * @returns {Function} reconnect - Manual reconnection method
  */
 const useSocket = (url, options = {}) => {
   const [socket, setSocket] = useState(null);

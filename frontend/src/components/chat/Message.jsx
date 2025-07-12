@@ -1,6 +1,25 @@
 import React from 'react';
 
+/**
+ * Message Component
+ * 
+ * Renders individual chat messages with different styles for:
+ * - Current user vs other users
+ * - Host vs regular members
+ * - System messages (join/leave notifications)
+ * 
+ * @param {Object} message - Message object with content, user info, timestamp
+ * @param {boolean} isHost - Whether message sender is the room host
+ * @param {boolean} isCurrentUser - Whether message is from current user
+ * @param {string} className - Additional CSS classes
+ * @returns {JSX.Element} Styled message bubble
+ */
 const Message = ({ message, isHost, isCurrentUser, className = "" }) => {
+  /**
+   * Format timestamp for display
+   * @param {string|Date} timestamp - Message timestamp
+   * @returns {string} Formatted time string
+   */
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { 

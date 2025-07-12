@@ -1,5 +1,20 @@
 import React from 'react';
 
+/**
+ * Reusable Button Component
+ * 
+ * A flexible button component with multiple variants and styling options.
+ * Supports different styles (primary, secondary, danger) and states.
+ * 
+ * @param {React.ReactNode} children - Button content
+ * @param {string} type - Button type ('button', 'submit', 'reset')
+ * @param {string} variant - Button style variant ('primary', 'secondary', 'danger')
+ * @param {string} className - Additional CSS classes
+ * @param {boolean} fullWidth - Whether button should take full width
+ * @param {boolean} disabled - Whether button is disabled
+ * @param {Function} onClick - Click handler function
+ * @returns {JSX.Element} Styled button element
+ */
 const Button = ({ 
   children, 
   type = 'button', 

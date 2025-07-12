@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'react-toastify';
 
 /**
- * Custom hook for managing timer functionality in study rooms
+ * Custom hook for managing timer functionality in FokasHive rooms
  * Handles countdown, state management, and socket communication
  */
 const useTimer = (socket, roomId, initialTimerState = null, isHost = false, timerSettings = null) => {

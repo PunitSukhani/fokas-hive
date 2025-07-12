@@ -2,6 +2,22 @@ import React from 'react';
 import { HiPlay, HiPause } from 'react-icons/hi';
 import { HiArrowPath } from 'react-icons/hi2';
 
+/**
+ * Timer Component
+ * 
+ * A Pomodoro-style timer for study sessions with visual progress indicator.
+ * Features a circular progress bar, mode selection (focus/breaks), and control buttons.
+ * Only the room host can control the timer, but all users see synchronized updates.
+ * 
+ * @param {Object} timerState - Current timer state from useTimer hook
+ * @param {Function} onStart - Function to start the timer
+ * @param {Function} onPause - Function to pause the timer  
+ * @param {Function} onReset - Function to reset the timer
+ * @param {Function} onModeChange - Function to change timer mode
+ * @param {boolean} canControl - Whether current user can control timer (host only)
+ * @param {string} className - Additional CSS classes
+ * @param {Object} room - Room data with timer settings
+ */
 const Timer = ({ 
   timerState, 
   onStart, 
@@ -12,20 +28,32 @@ const Timer = ({
   className = "",
   room
 }) => {
-  // Format time to MM:SS
+  /**
+   * Format seconds into MM:SS display format
+   * @param {number} seconds - Time in seconds
+   * @returns {string} Formatted time string (e.g., "25:00")
+   */
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Get progress percentage for circular progress bar - use progress from hook
+  /**
+   * Calculate progress percentage for circular progress bar
+   * Uses progress value from the timer hook
+   * @returns {number} Progress percentage (0-100)
+   */
   const getProgress = () => {
     // The timerState passed is actually the entire timerHook object
     return timerState.progress || 0;
   };
 
-  // Get mode display name
+  /**
+   * Get user-friendly display name for timer mode
+   * @param {string} mode - Timer mode ('focus', 'shortBreak', 'longBreak')
+   * @returns {string} Display name for the mode
+   */
   const getModeDisplayName = (mode) => {
     switch (mode) {
       case 'focus': return 'Focus Session';
@@ -35,7 +63,11 @@ const Timer = ({
     }
   };
 
-  // Get timer duration for mode
+  /**
+   * Get timer duration for a specific mode from room settings
+   * @param {string} mode - Timer mode
+   * @returns {number} Duration in minutes
+   */
   const getModeDuration = (mode) => {
     if (!room?.timerSettings) {
       // Default durations
@@ -51,7 +83,11 @@ const Timer = ({
     }
   };
 
-  // Get mode color
+  /**
+   * Get color theme for different timer modes
+   * @param {string} mode - Timer mode
+   * @returns {string} CSS color value
+   */
   const getModeColor = (mode) => {
     switch (mode) {
       case 'focus': return '#3B82F6'; // Blue

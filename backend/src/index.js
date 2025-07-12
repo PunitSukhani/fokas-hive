@@ -57,7 +57,7 @@ app.use('/api/rooms', roomRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
-  res.send('StudyRoom API is running');
+  res.send('FokasHive API is running');
 });
 
 

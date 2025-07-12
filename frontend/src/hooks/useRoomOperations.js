@@ -5,22 +5,56 @@ import { useAuth } from '../context/AuthContext';
 import { createRoom as createRoomAPI, getActiveRooms } from '../services/roomService';
 import debounce from 'lodash.debounce';
 
+/**
+ * Custom hook for managing room operations in the dashboard
+ * 
+ * Handles room creation, joining, searching, and state management.
+ * Provides both Socket.IO and REST API integration for room operations.
+ * Manages UI state for room list, search functionality, and modal dialogs.
+ * 
+ * @param {Object} socket - Socket.IO instance for real-time communication
+ * @param {boolean} isSocketConnected - Current socket connection status
+ * @param {Array} initialRooms - Initial list of rooms to display
+ * @returns {Object} Room operations state and methods
+ * @returns {string} searchTerm - Current search input value
+ * @returns {Array} filteredRooms - Rooms filtered by search term
+ * @returns {boolean} showCreateModal - Whether create room modal is visible
+ * @returns {string} newRoomName - Current room name input value
+ * @returns {number} focusDuration - Focus timer duration in minutes
+ * @returns {number} shortBreakDuration - Short break timer duration in minutes
+ * @returns {number} longBreakDuration - Long break timer duration in minutes
+ * @returns {Function} setShowCreateModal - Toggle create room modal visibility
+ * @returns {Function} setNewRoomName - Update room name input
+ * @returns {Function} setFocusDuration - Update focus duration setting
+ * @returns {Function} setShortBreakDuration - Update short break duration setting
+ * @returns {Function} setLongBreakDuration - Update long break duration setting
+ * @returns {Function} handleSearchChange - Handle search input changes
+ * @returns {Function} handleCreateRoom - Create a new room
+ * @returns {Function} handleJoinRoom - Join an existing room
+ * @returns {Function} updateActiveRooms - Update the active rooms list
+ */
 const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   
+  // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [activeRooms, setActiveRooms] = useState(initialRooms);
   const [filteredRooms, setFilteredRooms] = useState(initialRooms);
+  
+  // Modal and form state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   
-  // Timer duration states (in minutes)
+  // Timer duration states (in minutes) - Pomodoro technique defaults
   const [focusDuration, setFocusDuration] = useState(25);
   const [shortBreakDuration, setShortBreakDuration] = useState(5);
   const [longBreakDuration, setLongBreakDuration] = useState(15);
 
-  // Search functionality with debounce
+  /**
+   * Debounced search functionality to prevent excessive filtering operations
+   * Filters rooms by name using case-insensitive matching
+   */
   const debouncedSearch = useCallback(
     debounce((term) => {
       if (!term.trim()) {
@@ -31,7 +65,7 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
         );
         setFilteredRooms(filtered);
       }
-    }, 300),
+    }, 300), // 300ms delay to avoid excessive API calls
     [activeRooms]
   );
 
@@ -40,12 +74,20 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
     debouncedSearch(searchTerm);
   }, [activeRooms, debouncedSearch, searchTerm]);
 
-  // Handle search input change
+  /**
+   * Handle search input changes with debouncing
+   * @param {Event} e - Input change event
+   */
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     debouncedSearch(e.target.value);
   };
-  // Handle create room - prefer REST API over Socket.IO
+
+  /**
+   * Handle room creation
+   * Attempts to create room via REST API first, falls back to Socket.IO if needed
+   * @param {Event} e - Form submit event
+   */
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     
@@ -168,7 +210,11 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
     }
   };
 
-  // Handle join room
+  /**
+   * Handle join room
+   * Navigates to the room page, which handles joining via Socket.IO
+   * @param {string} roomId - ID of the room to join
+   */
   const handleJoinRoom = (roomId) => {
     if (!roomId) {
       toast.error('Invalid room ID', { toastId: 'invalid-room' });
@@ -190,25 +236,29 @@ const useRoomOperations = (socket, isSocketConnected, initialRooms = []) => {
     }
   };
 
-  // Update active rooms
+  /**
+   * Update the active rooms list
+   * Applies current search filter to the new rooms list
+   * @param {Array} rooms - New list of active rooms
+   */
   const updateActiveRooms = useCallback((rooms) => {
     const roomsArray = Array.isArray(rooms) ? rooms : [];
     setActiveRooms(roomsArray);
     
-    // Apply current search filter
-    if (searchTerm.trim()) {
+    // Apply current search filter to new rooms
+    if (!searchTerm.trim()) {
+      setFilteredRooms(roomsArray);
+    } else {
       const filtered = roomsArray.filter(room => 
         room.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredRooms(filtered);
-    } else {
-      setFilteredRooms(roomsArray);
     }
   }, [searchTerm]);
 
+  // Return all state and methods for use in components
   return {
     searchTerm,
-    activeRooms,
     filteredRooms,
     showCreateModal,
     newRoomName,

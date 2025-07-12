@@ -1,6 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { HiPaperAirplane } from 'react-icons/hi';
 
+/**
+ * Message Input Component
+ * 
+ * Text input area for composing and sending chat messages.
+ * Features auto-resize, character counter, and send button with loading state.
+ * 
+ * @param {Function} onSendMessage - Function called when message is sent
+ * @param {boolean} disabled - Whether input is disabled
+ * @param {string} placeholder - Placeholder text for input
+ * @returns {JSX.Element} Message input form
+ */
 const MessageInput = ({ onSendMessage, disabled = false, placeholder = "Type a message..." }) => {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);

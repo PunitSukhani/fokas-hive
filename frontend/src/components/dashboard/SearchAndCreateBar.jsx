@@ -1,6 +1,26 @@
 import React from 'react';
 import { HiOutlineSearch, HiPlus } from 'react-icons/hi';
 
+/**
+ * Search and Create Bar Component
+ * 
+ * Provides a combined interface for searching existing rooms and creating new ones.
+ * Features a search input with icon and a create room button.
+ * 
+ * Key Features:
+ * - Real-time search input with search icon
+ * - Create room button with plus icon
+ * - Responsive layout (stacks on mobile, side-by-side on desktop)
+ * - Connection-aware UI (disabled when not connected)
+ * - Consistent styling with hover effects
+ * 
+ * @param {string} searchTerm - Current search input value
+ * @param {Function} onSearchChange - Handler for search input changes
+ * @param {Function} onCreateRoom - Handler for create room button click
+ * @param {boolean} isConnected - Socket connection status (affects button state)
+ * @returns {JSX.Element} Search input and create button bar
+ */
+
 const SearchAndCreateBar = ({ 
   searchTerm, 
   onSearchChange, 

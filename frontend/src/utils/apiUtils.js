@@ -2,12 +2,26 @@ import axiosInstance from "./axiosInstance";
 import API_PATHS from "./apiPaths";
 
 /**
- * Generic API call function
+ * API Utility Functions
+ * 
+ * Provides centralized API calling functionality with:
+ * - Automatic authentication via cookies
+ * - Consistent error handling
+ * - Support for all HTTP methods
+ * - Credential management
+ * 
+ * All API calls automatically include credentials for authentication
+ * and use the configured axios instance with interceptors.
+ */
+
+/**
+ * Generic API call function with automatic credential handling
  * @param {string} method - HTTP method (get, post, put, delete)
- * @param {string} url - API endpoint
- * @param {Object} data - Request body data
- * @param {Object} config - Additional axios config
- * @returns {Promise} Promise with response
+ * @param {string} url - API endpoint URL or path
+ * @param {Object} data - Request body data for POST/PUT requests
+ * @param {Object} config - Additional axios configuration options
+ * @returns {Promise} Promise resolving to response data
+ * @throws {Error} If request fails or returns error status
  */
 export const apiCall = async (method, url, data = null, config = {}) => {
   try {

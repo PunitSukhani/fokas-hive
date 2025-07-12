@@ -1,6 +1,24 @@
 import axios from "axios";
 import { BASE_URL } from "./apiPaths";
 
+/**
+ * Configured Axios Instance
+ * 
+ * Pre-configured axios instance for the FokasHive application with:
+ * - Base URL configuration
+ * - Request/response timeouts
+ * - Automatic credential inclusion
+ * - Global error handling
+ * - Authentication redirects
+ * 
+ * Features:
+ * - Automatic cookie-based authentication
+ * - Response data extraction
+ * - 401 redirect to login page
+ * - Global error message handling
+ * - Timeout configuration (10 seconds)
+ */
+
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,

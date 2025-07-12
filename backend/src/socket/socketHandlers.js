@@ -1,4 +1,35 @@
-// Socket.IO event handlers for study room features
+/**
+ * Socket.IO Event Handlers Setup
+ * 
+ * Central configuration for all Socket.IO event handlers in the FokasHive application.
+ * Sets up authentication middleware and registers handlers for:
+ * 
+ * Room Management:
+ * - join-room: User joins a room
+ * - leave-room: User leaves a room  
+ * - get-active-rooms: Fetch list of active rooms
+ * 
+ * Chat System:
+ * - send-message: Send chat message to room
+ * 
+ * Timer Control:
+ * - start-timer: Start room timer (host only)
+ * - pause-timer: Pause room timer (host only)
+ * - reset-timer: Reset room timer (host only)
+ * - change-timer-mode: Change timer mode (host only)
+ * - timer-completed: Handle timer completion
+ * 
+ * Connection Management:
+ * - connection: New user connects
+ * - disconnect: User disconnects
+ * 
+ * All events require authentication via JWT token.
+ * Active users are tracked for presence features.
+ * 
+ * @param {Object} io - Socket.IO server instance
+ */
+
+// Socket.IO event handlers for FokasHive features
 import { authenticateSocket } from './handlers/authHandler.js';
 import { handleJoinRoom, handleLeaveRoom, handleGetActiveRooms } from './handlers/roomHandler.js';
 import { handleSendMessage } from './handlers/chatHandler.js';
