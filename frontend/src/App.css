@@ -1,5 +1,28 @@
 /* App-specific animations and transitions */
 
+/* Logo styling */
+.logo-round {
+  border-radius: 50%;
+}
+
+.logo-round-lg {
+  border-radius: 50%;
+  width: 3rem;
+  height: 3rem;
+}
+
+.logo-round-md {
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+}
+
+.logo-round-sm {
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
 /* Fade in animation */
 @keyframes fadeIn {
   from {
