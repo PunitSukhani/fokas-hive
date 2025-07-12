@@ -41,9 +41,27 @@ export default {
   
   // CORS settings for session management
   CORS: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? process.env.FRONTEND_URL 
-      : 'http://localhost:5173',
+    origin: function(origin, callback) {
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'https://fokas-hive.vercel.app',
+        process.env.FRONTEND_URL
+      ];
+      
+      // Allow requests with no origin
+      if (!origin) return callback(null, true);
+      
+      // Allow any Vercel preview/deployment URLs for this project
+      if (origin && (
+        origin.includes('fokas-hive') && origin.includes('vercel.app') ||
+        allowedOrigins.indexOf(origin) !== -1
+      )) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
     credentials: true
   }
 };
