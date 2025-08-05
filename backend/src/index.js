@@ -53,8 +53,23 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 
+
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// For __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve frontend for all non-API GET requests
+const frontendPath = path.join(__dirname, '../../frontend/dist/index.html');
+
 app.get('/', (req, res) => {
   res.json({ message: 'FokasHive API is running! 🚀' });
+});
+
+app.get(/^\/((?!api).)*$/, (req, res) => {
+  res.sendFile(frontendPath);
 });
 
 // Socket.IO handlers

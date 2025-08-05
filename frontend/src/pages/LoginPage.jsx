@@ -64,7 +64,7 @@ const LoginPage = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <Link to="/" className="inline-block">
-            <span className="text-3xl font-bold text-blue-600">Study<span className="text-slate-800">Room</span></span>
+            <span className="text-4xl font-bold text-blue-600">Fokas<span className="text-slate-800">Hive</span></span>
           </Link>
           <h2 className="mt-6 text-3xl font-extrabold text-slate-900 tracking-tight">Welcome back</h2>
         </div>
